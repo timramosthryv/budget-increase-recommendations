@@ -101,6 +101,8 @@ svg{display:block;width:100%}
 .loading-overlay p{color:white;font-size:14px;font-weight:600;letter-spacing:.3px}
 .no-data-banner{background:#FFF7F0;border:1.5px solid #FFB899;border-radius:8px;padding:16px 22px;margin:20px 36px;font-size:13px;color:#8B4513;line-height:1.7}
 .no-data-banner strong{color:#FF5000}
+.reconcile{padding:10px 36px 0;font-size:11px;color:#718096;line-height:1.6}
+.reconcile strong{color:#0F1735}
 .note-box{background:#F5F7FA;border:1px solid #E2E8F0;border-radius:8px;padding:14px 18px;font-size:12px;color:#4A5568;line-height:1.8}
 .note-box strong{color:#0F1735}
 .split-hdr{display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:6px}
@@ -165,11 +167,12 @@ svg{display:block;width:100%}
   <div class="kpi-row-6">
     <div class="kpi hero"><div class="kpi-val white" id="s-recD">--</div><div class="kpi-lbl kl">Dollars Recommended YTD</div><div class="kpi-sub" id="s-recD-sub">&nbsp;</div></div>
     <div class="kpi hero"><div class="kpi-val" id="s-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded YTD</div><div class="kpi-sub" id="s-upD-sub">&nbsp;</div></div>
-    <div class="kpi hero"><div class="kpi-val green" id="s-dollarPct">--</div><div class="kpi-lbl kl">Dollar Capture Rate</div><div class="kpi-sub" id="s-dollarPct-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="kpi-val navy" id="s-recN">--</div><div class="kpi-lbl">Recommendations YTD</div><div class="kpi-sub ks" id="s-recN-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="kpi-val" id="s-upN">--</div><div class="kpi-lbl">Upgrades YTD</div><div class="kpi-sub ks" id="s-upN-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="kpi-val green" id="s-convPct">--</div><div class="kpi-lbl">Upgrade Conversion Rate</div><div class="kpi-sub ks" id="s-convPct-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="s-winPct">--</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub" id="s-winPct-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val green" id="s-capture">--</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks" id="s-capture-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val navy" id="s-openD">--</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks" id="s-openD-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val muted" id="s-deadD">--</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks" id="s-deadD-sub">&nbsp;</div></div>
   </div>
+  <div class="reconcile" id="s-reconcile"></div>
   <div class="grid">
     <div class="panel full">
       <div class="panel-title">Monthly Dollars Recommended vs. Dollars Upgraded</div>
@@ -236,13 +239,14 @@ svg{display:block;width:100%}
     <select id="qtdQuarterSel" onchange="setQTDQuarter(this.value)"></select>
   </div>
   <div class="kpi-row-6">
-    <div class="kpi hero"><div class="kpi-val white" id="q-recD">--</div><div class="kpi-lbl kl">Dollars Recommended <span class="qtd-label" id="q-lbl1">QTD</span></div></div>
-    <div class="kpi hero"><div class="kpi-val" id="q-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded <span class="qtd-label" id="q-lbl2">QTD</span></div></div>
-    <div class="kpi hero"><div class="kpi-val green" id="q-dollarPct">--</div><div class="kpi-lbl kl">Dollar Capture Rate</div></div>
-    <div class="kpi"><div class="kpi-val navy" id="q-recN">--</div><div class="kpi-lbl">Recommendations <span class="qtd-label" id="q-lbl3">QTD</span></div></div>
-    <div class="kpi"><div class="kpi-val" id="q-upN">--</div><div class="kpi-lbl">Upgrades <span class="qtd-label" id="q-lbl4">QTD</span></div></div>
-    <div class="kpi"><div class="kpi-val green" id="q-convPct">--</div><div class="kpi-lbl">Upgrade Conversion Rate</div></div>
+    <div class="kpi hero"><div class="kpi-val white" id="q-recD">--</div><div class="kpi-lbl kl">Dollars Recommended <span class="qtd-label" id="q-lbl1">QTD</span></div><div class="kpi-sub" id="q-recD-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val" id="q-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded <span class="qtd-label" id="q-lbl2">QTD</span></div><div class="kpi-sub" id="q-upD-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="q-winPct">--</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub" id="q-winPct-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val green" id="q-capture">--</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks" id="q-capture-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val navy" id="q-openD">--</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks" id="q-openD-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val muted" id="q-deadD">--</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks" id="q-deadD-sub">&nbsp;</div></div>
   </div>
+  <div class="reconcile" id="q-reconcile"></div>
   <div class="grid">
     <div class="panel full">
       <div class="panel-title">Monthly Recommended vs. Upgraded <span class="qtd-label" id="q-lbl5">QTD</span></div>
@@ -430,6 +434,36 @@ function aggBy(scope,key,minRows){
   return arr.sort((a,b)=>(b.recD+b.upD)-(a.recD+a.upD));
 }
 
+/* Cohort view of a set of recommendations, split by how they resolved.
+   Every recommendation lands in exactly one of upgraded / open / dead, so
+   upRecD + openD + deadD always equals recD. That identity is printed under
+   the KPI row so the tiles can be reconciled on sight.
+
+   Win rate and capture are deliberately cohort based, not period based:
+     winRate = upgraded records / all records recommended in the period
+     capture = dollars increased / dollars recommended ON THOSE SAME records
+   Mixing those populations is what makes a single blended percentage
+   misleading, so the two effects are reported separately. */
+function cohortStats(rows){
+  const o={recN:rows.length,recD:0,upN:0,upRecD:0,upIncD:0,openN:0,openD:0,deadN:0,deadD:0};
+  rows.forEach(r=>{
+    const rd=recD(r);o.recD+=rd;
+    const st=g(r,'Status');
+    if(st==='Upgraded'){o.upN++;o.upRecD+=rd;o.upIncD+=upD(r);}
+    else if(st==='No Upgrade Yet'){o.openN++;o.openD+=rd;}
+    else{o.deadN++;o.deadD+=rd;}
+  });
+  o.winRate=o.recN?o.upN/o.recN*100:0;
+  o.capture=o.upRecD>0?o.upIncD/o.upRecD*100:0;
+  o.balances=Math.abs((o.upRecD+o.openD+o.deadD)-o.recD)<0.01;
+  return o;
+}
+function reconcileLine(c,periodLbl){
+  if(!c.recN)return'';
+  return'<strong>'+fmtD(c.recD)+'</strong> recommended '+esc(periodLbl)+' resolves to '+
+    fmtD(c.upRecD)+' upgraded ('+c.upN+') + '+fmtD(c.openD)+' still open ('+c.openN+') + '+
+    fmtD(c.deadD)+' no longer counts ('+c.deadN+')'+(c.balances?'.':' &mdash; figures do not reconcile, check the Raw Data tab.');
+}
 function sortBy(arr,key){return[...arr].sort((a,b)=>b[key]-a[key]);}
 function aggStatus(rows){
   const m={};rows.forEach(r=>{const st=g(r,'Status')||'Unknown';if(!m[st])m[st]={n:0,recD:0,upD:0};m[st].n++;m[st].recD+=recD(r);m[st].upD+=upD(r);});
@@ -634,16 +668,18 @@ function renderSummary(){
   const rN=sc.rec.length,uN=sc.up.length;
   document.getElementById('s-recD').textContent=fmtD(rD);
   document.getElementById('s-upD').textContent=fmtD(uD);
-  document.getElementById('s-dollarPct').textContent=fmtPct(uD,rD);
-  document.getElementById('s-recN').textContent=rN.toLocaleString();
-  document.getElementById('s-upN').textContent=uN.toLocaleString();
-  document.getElementById('s-convPct').textContent=fmtPct(uN,rN);
-  document.getElementById('s-recD-sub').textContent=rN?'Avg '+fmtD(rD/rN)+' per recommendation':' ';
-  document.getElementById('s-upD-sub').textContent=uN?'Avg '+fmtD(uD/uN)+' per upgrade':' ';
-  document.getElementById('s-dollarPct-sub').textContent=fmtD(uD)+' of '+fmtD(rD);
-  document.getElementById('s-recN-sub').textContent='Date Recommended in '+YEAR;
-  document.getElementById('s-upN-sub').textContent='Date Upgrade Happened in '+YEAR;
-  document.getElementById('s-convPct-sub').textContent=uN+' upgraded of '+rN+' reviewed';
+  const c=cohortStats(sc.rec);
+  document.getElementById('s-winPct').textContent=c.recN?c.winRate.toFixed(1)+'%':'--';
+  document.getElementById('s-capture').textContent=c.upRecD>0?Math.round(c.capture)+'%':'--';
+  document.getElementById('s-openD').textContent=fmtD(c.openD);
+  document.getElementById('s-deadD').textContent=fmtD(c.deadD);
+  document.getElementById('s-recD-sub').textContent=rN.toLocaleString()+' recommendations'+(rN?' · avg '+fmtD(rD/rN):'');
+  document.getElementById('s-upD-sub').textContent=uN.toLocaleString()+' upgrades'+(uN?' · avg '+fmtD(uD/uN):'');
+  document.getElementById('s-winPct-sub').textContent=c.upN+' of '+c.recN+' recommendations upgraded';
+  document.getElementById('s-capture-sub').textContent=fmtD(c.upIncD)+' landed on '+fmtD(c.upRecD)+' recommended';
+  document.getElementById('s-openD-sub').textContent=c.openN+' recommendations not yet resolved';
+  document.getElementById('s-deadD-sub').textContent=c.deadN+' closed without an upgrade';
+  document.getElementById('s-reconcile').innerHTML=reconcileLine(c,'in '+YEAR);
 
   drawDualMonthly('c1',aggMonthly(sc,true));
   const excluded=DATA.length-new Set([...sc.rec,...sc.up]).size;
@@ -676,12 +712,20 @@ function renderQTD(){
   const q=selectedQTD,sc=scopeQuarter(DATA,q);
   document.querySelectorAll('.qtd-label').forEach(e=>e.textContent=q);
   const rD=sc.rec.reduce((a,r)=>a+recD(r),0),uD=sc.up.reduce((a,r)=>a+upD(r),0);
+  const c=cohortStats(sc.rec);
   document.getElementById('q-recD').textContent=fmtD(rD);
   document.getElementById('q-upD').textContent=fmtD(uD);
-  document.getElementById('q-dollarPct').textContent=fmtPct(uD,rD);
-  document.getElementById('q-recN').textContent=sc.rec.length.toLocaleString();
-  document.getElementById('q-upN').textContent=sc.up.length.toLocaleString();
-  document.getElementById('q-convPct').textContent=fmtPct(sc.up.length,sc.rec.length);
+  document.getElementById('q-winPct').textContent=c.recN?c.winRate.toFixed(1)+'%':'--';
+  document.getElementById('q-capture').textContent=c.upRecD>0?Math.round(c.capture)+'%':'--';
+  document.getElementById('q-openD').textContent=fmtD(c.openD);
+  document.getElementById('q-deadD').textContent=fmtD(c.deadD);
+  document.getElementById('q-recD-sub').textContent=sc.rec.length.toLocaleString()+' recommendations';
+  document.getElementById('q-upD-sub').textContent=sc.up.length.toLocaleString()+' upgrades';
+  document.getElementById('q-winPct-sub').textContent=c.upN+' of '+c.recN+' recommendations upgraded';
+  document.getElementById('q-capture-sub').textContent=fmtD(c.upIncD)+' landed on '+fmtD(c.upRecD)+' recommended';
+  document.getElementById('q-openD-sub').textContent=c.openN+' not yet resolved';
+  document.getElementById('q-deadD-sub').textContent=c.deadN+' closed without an upgrade';
+  document.getElementById('q-reconcile').innerHTML=reconcileLine(c,'in '+q);
   drawDualMonthly('q1',aggMonthly(sc,false));
   drawButterfly('q2',aggBy(sc,'PCSM'),20);
   drawButterfly('q3',aggBy(sc,'Coach'),20);
@@ -703,14 +747,16 @@ function personPane(who,key,period,otherLabel){
   const rN=sc.rec.length,uN=sc.up.length;
   const periodLbl=period==='qtd'?selectedQTD:String(YEAR)+' YTD';
   const uid=key==='PCSM'?'p':'c';
+  const c=cohortStats(sc.rec);
   return'<div class="kpi-row-6">'+
-    '<div class="kpi hero"><div class="kpi-val white">'+fmtD(rD)+'</div><div class="kpi-lbl kl">Dollars Recommended</div><div class="kpi-sub">'+esc(periodLbl)+'</div></div>'+
-    '<div class="kpi hero"><div class="kpi-val">'+fmtD(uD)+'</div><div class="kpi-lbl kl">Dollars Upgraded</div><div class="kpi-sub">'+esc(periodLbl)+'</div></div>'+
-    '<div class="kpi hero"><div class="kpi-val green">'+fmtPct(uD,rD)+'</div><div class="kpi-lbl kl">Dollar Capture Rate</div><div class="kpi-sub">'+fmtD(uD)+' of '+fmtD(rD)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-val navy">'+rN+'</div><div class="kpi-lbl">Recommendations</div></div>'+
-    '<div class="kpi"><div class="kpi-val">'+uN+'</div><div class="kpi-lbl">Upgrades</div></div>'+
-    '<div class="kpi"><div class="kpi-val green">'+fmtPct(uN,rN)+'</div><div class="kpi-lbl">Upgrade Conversion</div></div>'+
+    '<div class="kpi hero"><div class="kpi-val white">'+fmtD(rD)+'</div><div class="kpi-lbl kl">Dollars Recommended</div><div class="kpi-sub">'+rN+' recommendations · '+esc(periodLbl)+'</div></div>'+
+    '<div class="kpi hero"><div class="kpi-val">'+fmtD(uD)+'</div><div class="kpi-lbl kl">Dollars Upgraded</div><div class="kpi-sub">'+uN+' upgrades · '+esc(periodLbl)+'</div></div>'+
+    '<div class="kpi hero"><div class="kpi-val green">'+(c.recN?c.winRate.toFixed(1)+'%':'--')+'</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub">'+c.upN+' of '+c.recN+' upgraded</div></div>'+
+    '<div class="kpi"><div class="kpi-val green">'+(c.upRecD>0?Math.round(c.capture)+'%':'--')+'</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks">'+fmtD(c.upIncD)+' on '+fmtD(c.upRecD)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-val navy">'+fmtD(c.openD)+'</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks">'+c.openN+' not yet resolved</div></div>'+
+    '<div class="kpi"><div class="kpi-val muted">'+fmtD(c.deadD)+'</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks">'+c.deadN+' closed without an upgrade</div></div>'+
     '</div>'+
+    '<div class="reconcile">'+reconcileLine(c,esc(periodLbl))+'</div>'+
     '<div class="grid">'+
       '<div class="panel full"><div class="panel-title">Monthly Recommended vs. Upgraded</div><svg id="'+uid+'m1" height="220"></svg>'+
         '<div class="legend"><div class="leg"><div class="leg-dot" style="background:#0F1735"></div>Dollars Recommended</div><div class="leg"><div class="leg-dot" style="background:#FF5000"></div>Dollars Upgraded</div><div class="leg"><div class="leg-dot" style="background:#2D9D6A"></div>Capture rate</div></div></div>'+
@@ -795,8 +841,10 @@ function renderLog(){
     '<strong>Refresh:</strong> automated export twice daily at 12:00 AM and 12:00 PM Central.<br>'+
     '<strong>PCSM:</strong> the Submitted By field. <strong>Coach:</strong> the Asana assignee.<br>'+
     dataQualityLine()+
-    '<strong>Capture rate:</strong> Dollar Amount Increased divided by Dollar Amount Recommended. '+
-    '<strong>Upgrade conversion:</strong> upgraded records divided by all reviewed records, including No Longer Counts.<br>'+
+    '<strong>Upgrade win rate:</strong> upgraded records divided by all records recommended in the period, including No Longer Counts. '+
+    '<strong>Capture when upgraded:</strong> Dollar Amount Increased divided by Dollar Amount Recommended, counting only the records that upgraded. '+
+    'These are reported separately on purpose. A single blended percentage hides whether a low number comes from few wins or small wins, '+
+    'and it mixes two different populations because dollars recommended and dollars upgraded are dated on different fields.<br>'+
     '<strong>Generated:</strong> '+esc(DATA_TS)+'</div>'+
     '<table class="log-table" style="margin-top:14px"><thead><tr><th>Section</th><th class="num">Records</th><th class="num">$ Recommended</th><th class="num">$ Increased</th></tr></thead><tbody>'+
     byStatus.map(d=>'<tr><td>'+statusBadge(d.label)+'</td><td class="num">'+d.n.toLocaleString()+'</td><td class="num">'+fmtD(d.recD)+'</td><td class="num">'+fmtD(d.upD)+'</td></tr>').join('')+

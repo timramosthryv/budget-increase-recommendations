@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Budget Increase Recommendations Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#F0F2F5;color:#0F1735;min-height:100vh}
+.hdr{background:#0F1735;padding:20px 36px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.hdr-left h1{font-size:20px;font-weight:700;color:white;letter-spacing:-.3px}
+.hdr-left p{font-size:12px;color:#A8B4C8;margin-top:7px;line-height:1.6;max-width:760px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-logo{height:28px;width:auto;display:block;flex-shrink:0}
+.brand-rule{width:1px;height:24px;background:rgba(255,255,255,.22);flex-shrink:0}
+@media (max-width:760px){.brand{flex-wrap:wrap;gap:10px}.brand-rule{display:none}}
+.hdr-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+.last-updated{font-size:11px;color:#A8B4C8;white-space:nowrap}
+.last-updated strong{color:white}
+.hdr-actions{display:flex;gap:8px;align-items:center}
+.data-badge{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:7px;padding:7px 12px;white-space:nowrap}
+.data-badge .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.data-badge .dot.live{background:#2D9D6A}
+.data-badge .dot.sample{background:#D4A017}
+.data-badge .dot.loading{background:#A8B4C8;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.data-badge span{font-size:11px;color:#CBD5E0;font-weight:600}
+.upload-btn{background:rgba(255,80,0,.15);color:#FF9066;border:1.5px solid rgba(255,80,0,.4);border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:background .15s;white-space:nowrap}
+.upload-btn:hover{background:rgba(255,80,0,.28)}
+.export-btn{background:rgba(255,255,255,.10);color:#E2E8F0;border:1.5px solid rgba(255,255,255,.24);border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;transition:background .15s;white-space:nowrap}
+.export-btn:hover{background:rgba(255,255,255,.2);color:white}
+.upload-bar{background:#FFF7F0;border-bottom:2px solid #FF5000;padding:14px 36px;display:none;align-items:center;gap:16px}
+.upload-bar.open{display:flex}
+.upload-zone{flex:1;border:2px dashed #FFB899;border-radius:8px;padding:14px 20px;text-align:center;cursor:pointer;transition:background .15s}
+.upload-zone:hover,.upload-zone.drag{background:#FEE8D6;border-color:#FF5000}
+.upload-zone p{font-size:13px;color:#FF5000;font-weight:600}
+.upload-zone small{font-size:11px;color:#C47A55}
+#fileInput{display:none}
+.upload-note{min-width:220px;max-width:290px;font-size:11px;color:#4A5568;line-height:1.7}
+.upload-note strong{color:#0F1735}
+.tab-bar{background:#0F1735;padding:0 36px;display:flex;border-top:1px solid rgba(255,255,255,.08);overflow-x:auto}
+.tab{padding:11px 18px;font-size:11px;font-weight:700;color:#A8B4C8;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap}
+.tab:hover{color:white}
+.tab.active{color:#FF5000;border-bottom-color:#FF5000}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 36px 2px}
+.kpi-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:18px 36px 2px}
+.kpi-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;padding:18px 36px 2px}
+.kpi{background:white;border-radius:10px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.kpi.hero{background:#0F1735}
+.kpi-val{font-size:28px;font-weight:700;color:#FF5000;letter-spacing:-1px}
+.kpi-val.navy{color:#0F1735}
+.kpi-val.white{color:white}
+.kpi-val.green{color:#2D9D6A}
+.kpi-val.zero,.kpi-val.muted{color:#A0AEC0}
+.kpi-lbl{font-size:10px;color:#718096;margin-top:5px;text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+.kpi-lbl.kl{color:#A8B4C8}
+.kpi-sub{font-size:10px;color:#A0AEC0;margin-top:3px}
+.kpi-sub.ks{color:#718096}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 36px 36px}
+.full{grid-column:1/-1}
+.panel{background:white;border-radius:10px;padding:20px 22px 16px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.panel-title{font-size:11px;font-weight:700;color:#0F1735;text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px}
+.panel-sub{font-size:11px;color:#718096;margin-bottom:12px;margin-top:-6px;line-height:1.6}
+.caption{font-size:12px;color:#718096;margin-top:10px;line-height:1.6}
+svg{display:block;width:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#4A5568}
+.leg-dot{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.selector-row{display:flex;align-items:center;gap:12px;padding:16px 36px 0;flex-wrap:wrap}
+.selector-row label{font-size:11px;font-weight:700;color:#0F1735;text-transform:uppercase;letter-spacing:.5px}
+.selector-row select{border:1.5px solid #DFE4ED;border-radius:8px;padding:8px 14px;font-size:13px;color:#0F1735;background:white;cursor:pointer;min-width:190px}
+.selector-row select:focus{outline:none;border-color:#FF5000}
+.period-toggle{display:flex;background:#F0F2F5;border-radius:8px;padding:3px;gap:2px}
+.period-btn{padding:6px 16px;font-size:11px;font-weight:700;color:#718096;cursor:pointer;border-radius:6px;border:none;background:transparent;text-transform:uppercase;letter-spacing:.4px;transition:all .15s}
+.period-btn.active{background:white;color:#0F1735;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.btn-ghost{border:1.5px solid #DFE4ED;background:white;border-radius:8px;padding:8px 14px;font-size:11px;font-weight:700;color:#0F1735;cursor:pointer;text-transform:uppercase;letter-spacing:.4px}
+.btn-ghost:hover{border-color:#FF5000;color:#FF5000}
+.log-table{width:100%;border-collapse:collapse;margin-top:8px}
+.log-table th{font-size:11px;font-weight:700;color:#0F1735;text-transform:uppercase;letter-spacing:.5px;text-align:left;padding:10px 14px;background:#F5F7FA;border-bottom:2px solid #DFE4ED;position:sticky;top:0;z-index:2}
+.log-table td{font-size:13px;color:#4A5568;padding:9px 14px;border-bottom:1px solid #F0F4F8}
+.log-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.log-table th.num{text-align:right}
+.log-table tr:last-child td{border:none}
+.log-table tr:hover td{background:#FAFBFC}
+.log-table tfoot td{font-weight:700;color:#0F1735;background:#F5F7FA;border-top:2px solid #DFE4ED}
+.table-wrap{max-height:540px;overflow:auto;border:1px solid #EDF2F7;border-radius:8px}
+.badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;letter-spacing:.3px}
+.badge-up{background:#F0FFF8;color:#1E7A52;border:1px solid #A8DCC3}
+.badge-open{background:#FFFBEB;color:#8A6A00;border:1px solid #EBD79A}
+.badge-dead{background:#F5F5F5;color:#8A94A6;border:1px solid #E2E8F0}
+.pane{display:none}
+.pane.active{display:block}
+.empty-state{text-align:center;padding:60px 20px;color:#A0AEC0}
+.empty-state h3{font-size:16px;margin-bottom:8px;color:#4A5568}
+.empty-state p{font-size:13px;line-height:1.7}
+.qtd-label{display:inline-block;background:#FF5000;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,53,.75);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.loading-overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#FF5000;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay p{color:white;font-size:14px;font-weight:600;letter-spacing:.3px}
+.no-data-banner{background:#FFF7F0;border:1.5px solid #FFB899;border-radius:8px;padding:16px 22px;margin:20px 36px;font-size:13px;color:#8B4513;line-height:1.7}
+.no-data-banner strong{color:#FF5000}
+.note-box{background:#F5F7FA;border:1px solid #E2E8F0;border-radius:8px;padding:14px 18px;font-size:12px;color:#4A5568;line-height:1.8}
+.note-box strong{color:#0F1735}
+.split-hdr{display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:6px}
+.split-hdr .left{color:#0F1735}
+.split-hdr .right{color:#FF5000}
+.meta-list{list-style:none;font-size:12px;color:#4A5568;line-height:2}
+.meta-list strong{color:#0F1735}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <p id="loadingMsg">Loading dashboard data...</p>
+</div>
+
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="brand">
+      <img class="brand-logo" src="data:image/png;base64,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" alt="Thryv">
+      <span class="brand-rule"></span>
+      <h1>Budget Increase Recommendations &mdash; Performance Dashboard</h1>
+    </div>
+    <p id="hdrDesc">Loading data from repository...</p>
+  </div>
+  <div class="hdr-right">
+    <div class="last-updated">Last updated: <strong id="lastUpdated">--</strong></div>
+    <div class="hdr-actions">
+      <div class="data-badge"><div class="dot loading" id="dataDot"></div><span id="dataLabel">Loading...</span></div>
+      <button class="export-btn" onclick="exportAll()" title="Download every tracked record as a CSV">&#8595; Export Raw Data</button>
+      <button class="upload-btn" onclick="toggleUpload()">&#8593; Local Preview</button>
+    </div>
+  </div>
+</div>
+
+<div class="upload-bar" id="uploadBar">
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+       ondragover="event.preventDefault();this.classList.add('drag')"
+       ondragleave="this.classList.remove('drag')"
+       ondrop="event.preventDefault();this.classList.remove('drag');handleFiles(event.dataTransfer.files)">
+    <p>Drop .xlsx here to preview locally</p>
+    <small>Local preview only &mdash; not published to other users</small>
+  </div>
+  <input type="file" id="fileInput" accept=".xlsx" onchange="handleFiles(this.files)">
+  <div class="upload-note">
+    <strong>Published data refreshes on its own.</strong><br>
+    The Asana export runs twice a day at 12:00 AM and 12:00 PM Central. Use this panel only to preview a file before it is published.
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('summary',this)">YTD Summary</div>
+  <div class="tab" onclick="showTab('qtd',this)">QTD Summary</div>
+  <div class="tab" onclick="showTab('pcsm',this)">By PCSM</div>
+  <div class="tab" onclick="showTab('coach',this)">By Coach</div>
+  <div class="tab" onclick="showTab('kicker',this)">Kicker</div>
+  <div class="tab" onclick="showTab('log',this)">Raw Data</div>
+</div>
+
+<!-- ============ YTD SUMMARY ============ -->
+<div class="pane active" id="pane-summary">
+  <div class="kpi-row-6">
+    <div class="kpi hero"><div class="kpi-val white" id="s-recD">--</div><div class="kpi-lbl kl">Dollars Recommended YTD</div><div class="kpi-sub" id="s-recD-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val" id="s-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded YTD</div><div class="kpi-sub" id="s-upD-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="s-dollarPct">--</div><div class="kpi-lbl kl">Dollar Capture Rate</div><div class="kpi-sub" id="s-dollarPct-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val navy" id="s-recN">--</div><div class="kpi-lbl">Recommendations YTD</div><div class="kpi-sub ks" id="s-recN-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val" id="s-upN">--</div><div class="kpi-lbl">Upgrades YTD</div><div class="kpi-sub ks" id="s-upN-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val green" id="s-convPct">--</div><div class="kpi-lbl">Upgrade Conversion Rate</div><div class="kpi-sub ks" id="s-convPct-sub">&nbsp;</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel full">
+      <div class="panel-title">Monthly Dollars Recommended vs. Dollars Upgraded</div>
+      <div class="panel-sub">Recommendations plot to the month of Date Recommended. Upgrades plot to the month of Date Upgrade Happened.</div>
+      <svg id="c1" height="250"></svg>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#0F1735"></div>Dollars Recommended</div>
+        <div class="leg"><div class="leg-dot" style="background:#FF5000"></div>Dollars Upgraded</div>
+        <div class="leg"><div class="leg-dot" style="background:#2D9D6A"></div>Capture rate</div>
+      </div>
+      <div class="caption" id="c1-cap"></div>
+    </div>
+
+    <div class="panel full">
+      <div class="panel-title">PCSM Scorecard &mdash; Recommendations Made vs. Upgrades Landed</div>
+      <div class="panel-sub">Left side is what the PCSM recommended. Right side is what actually upgraded. Percentage is dollars captured.</div>
+      <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
+      <svg id="c2"></svg>
+    </div>
+
+    <div class="panel full">
+      <div class="panel-title">Coach Scorecard &mdash; Recommendations Made vs. Upgrades Landed</div>
+      <div class="panel-sub">Coach is the Asana assignee on the recommendation.</div>
+      <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
+      <svg id="c3"></svg>
+    </div>
+
+    <div class="panel full">
+      <div class="panel-title">Recommendation Status Mix</div>
+      <svg id="c4" height="190"></svg>
+      <div class="caption" id="c4-cap"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Dollars Recommended by Cohort or Escalation Type</div>
+      <div class="panel-sub">Ranked by dollars recommended.</div>
+      <svg id="c5"></svg>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Dollars Upgraded by Cohort or Escalation Type</div>
+      <div class="panel-sub">Ranked by dollars that actually landed.</div>
+      <svg id="c5b"></svg>
+    </div>
+
+    <div class="panel full">
+      <div class="panel-title">Capture Rate by Cohort or Escalation Type</div>
+      <div class="panel-sub">Cohorts with at least three recommendations, ranked by dollars captured.</div>
+      <svg id="c6"></svg>
+    </div>
+
+    <div class="panel full">
+      <div class="panel-title">Account Detail &mdash; Recommended vs. Increased</div>
+      <div class="panel-sub">Every tracked account with its recommended dollars and the dollars that actually landed.</div>
+      <div class="table-wrap" id="s-accounts"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ QTD SUMMARY ============ -->
+<div class="pane" id="pane-qtd">
+  <div class="selector-row">
+    <label>Quarter</label>
+    <select id="qtdQuarterSel" onchange="setQTDQuarter(this.value)"></select>
+  </div>
+  <div class="kpi-row-6">
+    <div class="kpi hero"><div class="kpi-val white" id="q-recD">--</div><div class="kpi-lbl kl">Dollars Recommended <span class="qtd-label" id="q-lbl1">QTD</span></div></div>
+    <div class="kpi hero"><div class="kpi-val" id="q-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded <span class="qtd-label" id="q-lbl2">QTD</span></div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="q-dollarPct">--</div><div class="kpi-lbl kl">Dollar Capture Rate</div></div>
+    <div class="kpi"><div class="kpi-val navy" id="q-recN">--</div><div class="kpi-lbl">Recommendations <span class="qtd-label" id="q-lbl3">QTD</span></div></div>
+    <div class="kpi"><div class="kpi-val" id="q-upN">--</div><div class="kpi-lbl">Upgrades <span class="qtd-label" id="q-lbl4">QTD</span></div></div>
+    <div class="kpi"><div class="kpi-val green" id="q-convPct">--</div><div class="kpi-lbl">Upgrade Conversion Rate</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel full">
+      <div class="panel-title">Monthly Recommended vs. Upgraded <span class="qtd-label" id="q-lbl5">QTD</span></div>
+      <svg id="q1" height="230"></svg>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#0F1735"></div>Dollars Recommended</div>
+        <div class="leg"><div class="leg-dot" style="background:#FF5000"></div>Dollars Upgraded</div>
+        <div class="leg"><div class="leg-dot" style="background:#2D9D6A"></div>Capture rate</div>
+      </div>
+    </div>
+    <div class="panel full">
+      <div class="panel-title">PCSM Scorecard <span class="qtd-label" id="q-lbl6">QTD</span></div>
+      <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
+      <svg id="q2"></svg>
+    </div>
+    <div class="panel full">
+      <div class="panel-title">Coach Scorecard <span class="qtd-label" id="q-lbl7">QTD</span></div>
+      <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
+      <svg id="q3"></svg>
+    </div>
+    <div class="panel full">
+      <div class="panel-title">Status Mix <span class="qtd-label" id="q-lbl8">QTD</span></div>
+      <svg id="q4" height="190"></svg>
+      <div class="caption" id="q4-cap"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Dollars Recommended by Cohort <span class="qtd-label" id="q-lbl9">QTD</span></div>
+      <svg id="q5"></svg>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Dollars Upgraded by Cohort <span class="qtd-label" id="q-lbl11">QTD</span></div>
+      <svg id="q5b"></svg>
+    </div>
+    <div class="panel full">
+      <div class="panel-title">Account Detail <span class="qtd-label" id="q-lbl10">QTD</span></div>
+      <div class="table-wrap" id="q-accounts"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BY PCSM ============ -->
+<div class="pane" id="pane-pcsm">
+  <div class="selector-row">
+    <label>PCSM</label>
+    <select id="pcsmSel" onchange="renderPCSM()"><option value="">-- Select PCSM --</option></select>
+    <label>Period</label>
+    <div class="period-toggle">
+      <button class="period-btn active" id="pPeriodYTD" onclick="setPcsmPeriod('ytd')">YTD</button>
+      <button class="period-btn" id="pPeriodQTD" onclick="setPcsmPeriod('qtd')">QTD</button>
+    </div>
+  </div>
+  <div id="pcsm-content"><div class="empty-state"><h3>Select a PCSM above</h3><p>Choose a PCSM to see recommendations made, upgrades landed, and the account level detail behind both.</p></div></div>
+</div>
+
+<!-- ============ BY COACH ============ -->
+<div class="pane" id="pane-coach">
+  <div class="selector-row">
+    <label>Coach</label>
+    <select id="coachSel" onchange="renderCoach()"><option value="">-- Select Coach --</option></select>
+    <label>Period</label>
+    <div class="period-toggle">
+      <button class="period-btn active" id="cPeriodYTD" onclick="setCoachPeriod('ytd')">YTD</button>
+      <button class="period-btn" id="cPeriodQTD" onclick="setCoachPeriod('qtd')">QTD</button>
+    </div>
+  </div>
+  <div id="coach-content"><div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the PCSMs behind it.</p></div></div>
+</div>
+
+<!-- ============ KICKER (placeholder) ============ -->
+<div class="pane" id="pane-kicker">
+  <div class="grid" style="grid-template-columns:1fr">
+    <div class="panel full">
+      <div class="panel-title">Kicker</div>
+      <div class="empty-state">
+        <h3>Kicker criteria not yet configured</h3>
+        <p>This tab is reserved for the budget increase kicker calculation.<br>
+        Once the qualifying rules and payout tiers are defined, they get added here and the tab fills in automatically from the same Asana export.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ RAW DATA ============ -->
+<div class="pane" id="pane-log">
+  <div class="selector-row">
+    <select id="fCoach" onchange="renderLog()"><option value="">All Coaches</option></select>
+    <select id="fPcsm" onchange="renderLog()"><option value="">All PCSMs</option></select>
+    <select id="fStatus" onchange="renderLog()"><option value="">All Statuses</option></select>
+    <select id="fQuarter" onchange="renderLog()"><option value="">All Quarters (Recommended)</option></select>
+    <button class="btn-ghost" onclick="clearFilters()">Clear</button>
+    <button class="btn-ghost" onclick="exportCSV()">&#8595; Export Filtered View</button>
+    <button class="btn-ghost" onclick="exportAll()">&#8595; Export All Records</button>
+  </div>
+  <div class="grid" style="grid-template-columns:1fr">
+    <div class="panel full"><div class="panel-title">Raw Data <span id="logCount" style="color:#718096;font-weight:600"></span></div><div class="table-wrap" id="logContent"></div></div>
+    <div class="panel full"><div class="panel-title">Data Source</div><div id="sourceContent"></div></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// @@DATA_INJECTION@@
+
+const NS='http://www.w3.org/2000/svg';
+const ORANGE='#FF5000',NAVY='#0F1735',GREEN='#2D9D6A',YELLOW='#D4A017',RED='#E53E3E',GRAY='#EDF2F7',MUTED='#718096',BODY='#4A5568',LINE='#DFE4ED';
+const MONTH_ABBR=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const STATUS_ORDER=['Upgraded','No Upgrade Yet','No Longer Counts'];
+const STATUS_COLORS={'Upgraded':GREEN,'No Upgrade Yet':YELLOW,'No Longer Counts':'#CBD5E0'};
+
+let DATA=[],DATA_SOURCE='loading';
+let DATA_TS='@@TIMESTAMP@@';
+const YEAR=new Date().getFullYear();
+function currentQuarter(){const d=new Date();return'Q'+Math.ceil((d.getMonth()+1)/3)+' '+d.getFullYear();}
+let selectedQTD=currentQuarter();
+let pcsmPeriod='ytd',coachPeriod='ytd';
+
+/* ---------------- small helpers ---------------- */
+function num(v){const n=Number(String(v==null?'':v).replace(/[$,]/g,''));return isFinite(n)?n:0;}
+function g(r,k){return r[k]==null?'':r[k];}
+function fmtK(n){n=Number(n)||0;return'$'+(Math.abs(n)>=1000?(n/1000).toFixed(Math.abs(n)>=10000?0:1)+'k':n.toFixed(0));}
+function fmtD(n){return'$'+Math.round(Number(n)||0).toLocaleString();}
+function pct(a,b){return b>0?(a/b*100):0;}
+function fmtPct(a,b,dp){return b>0?(a/b*100).toFixed(dp==null?1:dp)+'%':'--';}
+function yearOf(d){const s=String(d||'');return s.length>=4?Number(s.slice(0,4)):null;}
+function monthIdx(d){const s=String(d||'');return s.length>=7?Number(s.slice(5,7))-1:null;}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function shortName(n){const p=String(n||'').trim().split(/\s+/);return p.length<=2?p.join(' '):p[0]+' '+p[1];}
+function fitLabel(str,maxChars){str=String(str==null?'':str);return str.length>maxChars?str.slice(0,Math.max(1,maxChars-1)).trimEnd()+'…':str;}
+
+/* Row predicates. Recommendation activity keys off Date Recommended.
+   Upgrade activity keys off Date Upgrade Happened. */
+function isUpgraded(r){return g(r,'Status')==='Upgraded';}
+function recD(r){return num(g(r,'Dollar Amount Recommended'));}
+function upD(r){return num(g(r,'Dollar Amount Increased'));}
+function recYear(r){return yearOf(g(r,'Date Recommended'));}
+function upYear(r){return yearOf(g(r,'Date Upgrade Happened'));}
+function recQ(r){return g(r,'Quarter Recommended');}
+function upQ(r){return g(r,'Quarter Upgraded');}
+
+/* Scope builders: return {rec:[rows],up:[rows]} */
+function scopeYTD(rows){
+  return{
+    rec:rows.filter(r=>recYear(r)===YEAR),
+    up:rows.filter(r=>isUpgraded(r)&&upYear(r)===YEAR),
+    label:String(YEAR)
+  };
+}
+function scopeQuarter(rows,q){
+  return{
+    rec:rows.filter(r=>recQ(r)===q),
+    up:rows.filter(r=>isUpgraded(r)&&upQ(r)===q),
+    label:q
+  };
+}
+
+/* ---------------- svg helpers ---------------- */
+function svgEl(id){return document.getElementById(id);}
+function svgW(id){const el=svgEl(id);if(!el)return 600;const w=el.parentElement.getBoundingClientRect().width-44;return w>80?w:600;}
+function s(tag,a,par){const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(a))e.setAttribute(k,v);if(par)par.appendChild(e);return e;}
+function t(par,x,y,str,a={}){const e=s('text',{x,y,'font-family':'inherit',...a},par);e.textContent=String(str);return e;}
+function noData(el,W,H){el.setAttribute('height',H||60);el.setAttribute('viewBox',`0 0 ${W} ${H||60}`);t(el,W/2,(H||60)/2+4,'No data in this period',{'text-anchor':'middle',fill:MUTED,'font-size':13});}
+
+/* ---------------- aggregations ---------------- */
+function aggMonthly(scope,upToNow){
+  const rec=new Array(12).fill(0),recN=new Array(12).fill(0),up=new Array(12).fill(0),upN=new Array(12).fill(0);
+  scope.rec.forEach(r=>{const m=monthIdx(g(r,'Date Recommended'));if(m!=null&&m>=0&&m<12){rec[m]+=recD(r);recN[m]++;}});
+  scope.up.forEach(r=>{const m=monthIdx(g(r,'Date Upgrade Happened'));if(m!=null&&m>=0&&m<12){up[m]+=upD(r);upN[m]++;}});
+  const lastMonth=upToNow?new Date().getMonth():-1;
+  const out=[];
+  for(let m=0;m<12;m++){
+    const has=rec[m]||up[m]||recN[m]||upN[m];
+    if(has||m<=lastMonth)out.push({m:MONTH_ABBR[m],rec:rec[m],recN:recN[m],up:up[m],upN:upN[m]});
+  }
+  return out;
+}
+
+function aggBy(scope,key,minRows){
+  const m={};
+  const touch=n=>{if(!m[n])m[n]={name:n,recD:0,recN:0,upD:0,upN:0};return m[n];};
+  scope.rec.forEach(r=>{const k=g(r,key)||'Unassigned';const o=touch(k);o.recD+=recD(r);o.recN++;});
+  scope.up.forEach(r=>{const k=g(r,key)||'Unassigned';const o=touch(k);o.upD+=upD(r);o.upN++;});
+  let arr=Object.values(m);
+  if(minRows)arr=arr.filter(o=>o.recN>=minRows);
+  return arr.sort((a,b)=>(b.recD+b.upD)-(a.recD+a.upD));
+}
+
+function sortBy(arr,key){return[...arr].sort((a,b)=>b[key]-a[key]);}
+function aggStatus(rows){
+  const m={};rows.forEach(r=>{const st=g(r,'Status')||'Unknown';if(!m[st])m[st]={n:0,recD:0,upD:0};m[st].n++;m[st].recD+=recD(r);m[st].upD+=upD(r);});
+  return STATUS_ORDER.filter(k=>m[k]).map(k=>({label:k,...m[k]}));
+}
+
+function uniqVals(key){return[...new Set(DATA.map(r=>g(r,key)).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));}
+
+/* ---------------- charts ---------------- */
+function drawDualMonthly(id,data){
+  const el=svgEl(id);if(!el)return;el.replaceChildren();
+  const W=svgW(id),H=+el.getAttribute('height')||250;el.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  if(!data.length){noData(el,W,H);return;}
+  const P={t:18,r:52,b:42,l:58},CW=W-P.l-P.r,CH=H-P.t-P.b;
+  const maxV=Math.max(1,...data.map(d=>Math.max(d.rec,d.up)));
+  const barZoneH=CH*0.68,base=P.t+CH,lineTop=P.t+6,lineBot=P.t+CH*0.30;
+  const n=data.length,step=CW/n,bw=Math.min(26,step*0.30),gap=3;
+  [0,.25,.5,.75,1].forEach(f=>{const y=base-f*barZoneH;s('line',{x1:P.l,y1:y,x2:P.l+CW,y2:y,stroke:GRAY,'stroke-width':1},el);t(el,P.l-6,y+4,fmtK(maxV*f),{'text-anchor':'end',fill:MUTED,'font-size':10});});
+  [0,50,100].forEach(v=>{const y=lineBot-(v/100)*(lineBot-lineTop);t(el,P.l+CW+6,y+4,v+'%',{fill:MUTED,'font-size':10});});
+  t(el,P.l+CW+6,lineTop-4,'Capture',{fill:MUTED,'font-size':10,'font-weight':600});
+  const pts=[];
+  data.forEach((d,i)=>{
+    const cx=P.l+i*step+step/2;
+    const x1=cx-bw-gap/2,x2=cx+gap/2;
+    const h1=(d.rec/maxV)*barZoneH,h2=(d.up/maxV)*barZoneH;
+    if(d.rec>0){s('rect',{x:x1,y:base-h1,width:bw,height:h1,fill:NAVY,rx:3},el);
+      t(el,x1+bw/2,h1>26?base-h1+13:base-h1-5,fmtK(d.rec),{'text-anchor':'middle',fill:h1>26?'white':NAVY,'font-size':9,'font-weight':700});}
+    if(d.up>0){s('rect',{x:x2,y:base-h2,width:bw,height:h2,fill:ORANGE,rx:3},el);
+      t(el,x2+bw/2,h2>26?base-h2+13:base-h2-5,fmtK(d.up),{'text-anchor':'middle',fill:h2>26?'white':ORANGE,'font-size':9,'font-weight':700});}
+    t(el,cx,base+15,d.m,{'text-anchor':'middle',fill:BODY,'font-size':11});
+    t(el,cx,base+29,d.recN+' rec / '+d.upN+' up',{'text-anchor':'middle',fill:'#A0AEC0','font-size':9});
+    const p=Math.min(100,pct(d.up,d.rec));
+    pts.push([cx,lineBot-(p/100)*(lineBot-lineTop),p]);
+  });
+  s('polyline',{points:pts.map(p=>p[0]+','+p[1]).join(' '),fill:'none',stroke:GREEN,'stroke-width':2.5},el);
+  pts.forEach(([x,y,p])=>{s('circle',{cx:x,cy:y,r:4,fill:GREEN,stroke:'white','stroke-width':1.5},el);t(el,x,y-8,Math.round(p)+'%',{'text-anchor':'middle',fill:GREEN,'font-size':9,'font-weight':700});});
+}
+
+function drawButterfly(id,data,cap,opts){
+  opts=opts||{};
+  const el=svgEl(id);if(!el)return;el.replaceChildren();
+  const W=svgW(id);
+  if(!data.length){noData(el,W,80);return;}
+  const rows=cap?data.slice(0,cap):data;
+  const n=rows.length;
+  const rateW=62,pad=10;
+  const nameW=Math.min(opts.wideNames?230:180,Math.max(110,W*(opts.wideNames?0.24:0.17)));
+  // Gutters reserved so the dollar labels at the outer end of each bar never clip.
+  const gut=Math.min(112,Math.max(84,W*0.115));
+  const P={t:6,b:8},rowH=34;
+  const H=P.t+n*rowH+P.b;
+  el.setAttribute('height',H);el.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const side=Math.max(24,(W-nameW-rateW-gut*2-pad*2)/2);
+  const cxL=pad+gut+side, cxR=cxL+nameW;
+  const maxV=Math.max(1,...rows.map(d=>Math.max(d.recD,d.upD)));
+  const bh=Math.min(16,rowH*0.48);
+  const maxChars=Math.floor(nameW/6.4);
+  rows.forEach((d,i)=>{
+    const y=P.t+i*rowH,mid=y+rowH/2;
+    if(i)s('line',{x1:pad,y1:y,x2:W-8,y2:y,stroke:GRAY,'stroke-width':1},el);
+    const raw=opts.wideNames?String(d.name):shortName(d.name);
+    t(el,cxL+nameW/2,mid+4,fitLabel(raw,maxChars),{'text-anchor':'middle',fill:NAVY,'font-size':11,'font-weight':600});
+    const wL=(d.recD/maxV)*side,wR=(d.upD/maxV)*side;
+    s('rect',{x:cxL-wL,y:mid-bh/2,width:Math.max(wL,1),height:bh,fill:NAVY,rx:2,opacity:0.9},el);
+    t(el,cxL-wL-6,mid+4,fmtK(d.recD)+'  ('+d.recN+')',{'text-anchor':'end',fill:NAVY,'font-size':10,'font-weight':600});
+    s('rect',{x:cxR,y:mid-bh/2,width:Math.max(wR,1),height:bh,fill:ORANGE,rx:2,opacity:d.upD?0.95:0.25},el);
+    t(el,cxR+wR+6,mid+4,fmtK(d.upD)+'  ('+d.upN+')',{fill:d.upD?ORANGE:'#A0AEC0','font-size':10,'font-weight':600});
+    const p=pct(d.upD,d.recD),clr=p>=50?GREEN:p>=25?YELLOW:p>0?ORANGE:'#A0AEC0';
+    s('rect',{x:W-rateW-4,y:mid-11,width:rateW,height:22,fill:p>=50?'#F0FFF8':p>0?'#FFF9F0':'#F7FAFC',rx:6},el);
+    t(el,W-rateW/2-4,mid+4.5,d.recD>0?Math.round(p)+'%':'--',{'text-anchor':'middle',fill:clr,'font-size':11,'font-weight':700});
+  });
+}
+
+function drawStatusBar(id,data,capId){
+  const el=svgEl(id);if(!el)return;el.replaceChildren();
+  const W=svgW(id),H=+el.getAttribute('height')||190;el.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const cap=capId?document.getElementById(capId):null;
+  if(!data.length){noData(el,W,H);if(cap)cap.textContent='';return;}
+  const total=data.reduce((a,d)=>a+d.n,0);
+  const P={t:10,l:8,r:8},barH=40,y=P.t+8;
+  let x=P.l,CW=W-P.l-P.r;
+  data.forEach(d=>{
+    const w=(d.n/total)*CW;
+    s('rect',{x,y,width:Math.max(w,1),height:barH,fill:STATUS_COLORS[d.label]||'#CBD5E0',rx:3},el);
+    if(w>44)t(el,x+w/2,y+barH/2+5,Math.round(d.n/total*100)+'%',{'text-anchor':'middle',fill:d.label==='No Longer Counts'?BODY:'white','font-size':12,'font-weight':700});
+    x+=w+2;
+  });
+  let ly=y+barH+26;
+  data.forEach(d=>{
+    s('rect',{x:P.l,y:ly-10,width:12,height:12,fill:STATUS_COLORS[d.label]||'#CBD5E0',rx:2},el);
+    t(el,P.l+19,ly,d.label,{fill:NAVY,'font-size':11,'font-weight':600});
+    t(el,W-P.r,ly,d.n.toLocaleString()+' accounts  ·  '+fmtD(d.recD)+' recommended',{'text-anchor':'end',fill:MUTED,'font-size':11});
+    ly+=24;
+  });
+  el.setAttribute('height',Math.max(H,ly+6));el.setAttribute('viewBox',`0 0 ${W} ${Math.max(H,ly+6)}`);
+  if(cap)cap.textContent=total.toLocaleString()+' tracked recommendations across the three sections.';
+}
+
+function drawHBar(id,data,lk,vk,color,cap){
+  const el=svgEl(id);if(!el)return;el.replaceChildren();
+  const W=svgW(id);
+  if(!data.length){noData(el,W,60);return;}
+  const rows=cap?data.slice(0,cap):data,n=rows.length;
+  const lW=Math.min(190,Math.max(110,W*0.30)),P={t:8,r:70,b:8,l:lW+10};
+  const rowH=30,H=P.t+n*rowH+P.b;
+  el.setAttribute('height',H);el.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const CW=W-P.l-P.r,maxV=Math.max(1,...rows.map(d=>d[vk]))*1.08;
+  const bh=Math.min(15,rowH*0.5);
+  const maxChars=Math.floor((lW-4)/6.2);
+  rows.forEach((d,i)=>{
+    const y=P.t+i*rowH+(rowH-bh)/2,bw=(d[vk]/maxV)*CW,op=Math.max(0.45,1-i*0.06);
+    const lab=fitLabel(d[lk],maxChars);
+    const node=t(el,P.l-7,y+bh/2+4,lab,{'text-anchor':'end',fill:NAVY,'font-size':11});
+    if(lab!==d[lk]){const ttl=document.createElementNS(NS,'title');ttl.textContent=d[lk];node.appendChild(ttl);}
+    s('rect',{x:P.l,y,width:Math.max(bw,1),height:bh,fill:color||ORANGE,rx:3,opacity:op},el);
+    t(el,P.l+bw+6,y+bh/2+4,fmtK(d[vk]),{fill:NAVY,'font-size':11,'font-weight':600});
+  });
+}
+
+function drawRateBar(id,data,cap){
+  const el=svgEl(id);if(!el)return;el.replaceChildren();
+  const W=svgW(id);
+  if(!data.length){noData(el,W,60);return;}
+  const rows=[...data].sort((a,b)=>pct(b.upD,b.recD)-pct(a.upD,a.recD));
+  const use=cap?rows.slice(0,cap):rows,n=use.length;
+  const lW=Math.min(210,Math.max(120,W*0.28)),P={t:8,r:170,b:8,l:lW+10};
+  const rowH=30,H=P.t+n*rowH+P.b;
+  el.setAttribute('height',H);el.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const CW=W-P.l-P.r,bh=Math.min(15,rowH*0.5);
+  const maxChars=Math.floor((lW-4)/6.2);
+  use.forEach((d,i)=>{
+    const p=pct(d.upD,d.recD),y=P.t+i*rowH+(rowH-bh)/2,bw=(Math.min(p,100)/100)*CW;
+    const clr=p>=50?GREEN:p>=25?YELLOW:ORANGE;
+    const lab=fitLabel(d.name,maxChars);
+    const node=t(el,P.l-7,y+bh/2+4,lab,{'text-anchor':'end',fill:NAVY,'font-size':11});
+    if(lab!==d.name){const ttl=document.createElementNS(NS,'title');ttl.textContent=d.name;node.appendChild(ttl);}
+    s('rect',{x:P.l,y,width:CW,height:bh,fill:GRAY,rx:3},el);
+    s('rect',{x:P.l,y,width:Math.max(bw,1),height:bh,fill:clr,rx:3},el);
+    t(el,P.l+CW+8,y+bh/2+4,p.toFixed(0)+'%',{fill:clr,'font-size':11,'font-weight':700});
+    t(el,W-4,y+bh/2+4,fmtK(d.upD)+' of '+fmtK(d.recD)+'  ·  '+d.recN+' rec',{'text-anchor':'end',fill:MUTED,'font-size':10});
+  });
+}
+
+/* ---------------- tables ---------------- */
+function statusBadge(st){
+  const cls=st==='Upgraded'?'badge-up':st==='No Upgrade Yet'?'badge-open':'badge-dead';
+  return'<span class="badge '+cls+'">'+esc(st)+'</span>';
+}
+function accountTable(rows,opts){
+  opts=opts||{};
+  if(!rows.length)return'<div class="empty-state"><p>No accounts in this period.</p></div>';
+  const sorted=[...rows].sort((a,b)=>(upD(b)-upD(a))||(recD(b)-recD(a)));
+  const showPcsm=opts.showPcsm!==false,showCoach=opts.showCoach!==false;
+  let totRec=0,totUp=0;
+  const body=sorted.map(r=>{
+    totRec+=recD(r);totUp+=upD(r);
+    const url=g(r,'Task URL');
+    const acct=esc(g(r,'Account Name')||g(r,'Task Name'));
+    return'<tr>'+
+      '<td>'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener" style="color:#0F1735;text-decoration:none;border-bottom:1px dotted #CBD5E0">'+acct+'</a>':acct)+'</td>'+
+      (showPcsm?'<td>'+esc(g(r,'PCSM'))+'</td>':'')+
+      (showCoach?'<td>'+esc(g(r,'Coach'))+'</td>':'')+
+      '<td>'+esc(g(r,'Cohort or Escalation Type'))+'</td>'+
+      '<td>'+esc(g(r,'Date Recommended'))+'</td>'+
+      '<td class="num">'+(recD(r)?fmtD(recD(r)):'--')+'</td>'+
+      '<td>'+statusBadge(g(r,'Status'))+'</td>'+
+      '<td>'+esc(g(r,'Date Upgrade Happened')||'')+'</td>'+
+      '<td class="num">'+(upD(r)?fmtD(upD(r)):'--')+'</td>'+
+    '</tr>';
+  }).join('');
+  const span=1+(showPcsm?1:0)+(showCoach?1:0)+3;
+  return'<table class="log-table"><thead><tr>'+
+    '<th>Account</th>'+(showPcsm?'<th>PCSM</th>':'')+(showCoach?'<th>Coach</th>':'')+
+    '<th>Cohort / Escalation</th><th>Recommended</th><th class="num">$ Recommended</th><th>Status</th><th>Upgraded</th><th class="num">$ Increased</th>'+
+    '</tr></thead><tbody>'+body+'</tbody>'+
+    '<tfoot><tr><td colspan="'+span+'">'+sorted.length.toLocaleString()+' accounts</td>'+
+    '<td class="num">'+fmtD(totRec)+'</td><td></td><td></td><td class="num">'+fmtD(totUp)+'</td></tr></tfoot></table>';
+}
+
+function scorecardTable(data,label){
+  if(!data.length)return'<div class="empty-state"><p>No data in this period.</p></div>';
+  let a=0,b=0,c=0,d=0;
+  const body=data.map(o=>{a+=o.recN;b+=o.recD;c+=o.upN;d+=o.upD;
+    return'<tr><td>'+esc(o.name)+'</td><td class="num">'+o.recN+'</td><td class="num">'+fmtD(o.recD)+
+      '</td><td class="num">'+o.upN+'</td><td class="num">'+fmtD(o.upD)+
+      '</td><td class="num"><strong style="color:'+(pct(o.upD,o.recD)>=50?GREEN:NAVY)+'">'+fmtPct(o.upD,o.recD,0)+'</strong></td></tr>';}).join('');
+  return'<table class="log-table"><thead><tr><th>'+esc(label)+'</th><th class="num">Recs</th><th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased</th><th class="num">Capture</th></tr></thead>'+
+    '<tbody>'+body+'</tbody><tfoot><tr><td>Total</td><td class="num">'+a+'</td><td class="num">'+fmtD(b)+'</td><td class="num">'+c+'</td><td class="num">'+fmtD(d)+'</td><td class="num">'+fmtPct(d,b,0)+'</td></tr></tfoot></table>';
+}
+
+/* ---------------- renderers ---------------- */
+function setKPI(id,val,cls){
+  const el=document.getElementById(id);if(!el)return;
+  el.textContent=val;
+  el.classList.toggle('zero',val==='--'||val==='$0');
+  if(cls)el.className='kpi-val '+cls;
+}
+
+function renderSummary(){
+  const sc=scopeYTD(DATA);
+  const rD=sc.rec.reduce((a,r)=>a+recD(r),0),uD=sc.up.reduce((a,r)=>a+upD(r),0);
+  const rN=sc.rec.length,uN=sc.up.length;
+  document.getElementById('s-recD').textContent=fmtD(rD);
+  document.getElementById('s-upD').textContent=fmtD(uD);
+  document.getElementById('s-dollarPct').textContent=fmtPct(uD,rD);
+  document.getElementById('s-recN').textContent=rN.toLocaleString();
+  document.getElementById('s-upN').textContent=uN.toLocaleString();
+  document.getElementById('s-convPct').textContent=fmtPct(uN,rN);
+  document.getElementById('s-recD-sub').textContent=rN?'Avg '+fmtD(rD/rN)+' per recommendation':' ';
+  document.getElementById('s-upD-sub').textContent=uN?'Avg '+fmtD(uD/uN)+' per upgrade':' ';
+  document.getElementById('s-dollarPct-sub').textContent=fmtD(uD)+' of '+fmtD(rD);
+  document.getElementById('s-recN-sub').textContent='Date Recommended in '+YEAR;
+  document.getElementById('s-upN-sub').textContent='Date Upgrade Happened in '+YEAR;
+  document.getElementById('s-convPct-sub').textContent=uN+' upgraded of '+rN+' reviewed';
+
+  drawDualMonthly('c1',aggMonthly(sc,true));
+  const excluded=DATA.length-new Set([...sc.rec,...sc.up]).size;
+  document.getElementById('c1-cap').textContent=excluded>0
+    ? excluded.toLocaleString()+' of '+DATA.length.toLocaleString()+' tracked records fall outside '+YEAR+' or have no date on the relevant field, so they are not on this chart. All records appear on the Raw Data tab.'
+    : '';
+
+  drawButterfly('c2',aggBy(sc,'PCSM'),20);
+  drawButterfly('c3',aggBy(sc,'Coach'),20);
+  drawStatusBar('c4',aggStatus(DATA),'c4-cap');
+  const coh=aggBy(sc,'Cohort or Escalation Type');
+  drawHBar('c5',sortBy(coh,'recD'),'name','recD',NAVY,10);
+  drawHBar('c5b',sortBy(coh,'upD').filter(o=>o.upD>0),'name','upD',ORANGE,10);
+  drawRateBar('c6',aggBy(sc,'Cohort or Escalation Type',3),12);
+  document.getElementById('s-accounts').innerHTML=accountTable(
+    DATA.filter(r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR)));
+}
+
+function populateQTDDropdown(){
+  const sel=document.getElementById('qtdQuarterSel');if(!sel)return;
+  const qs=[...new Set(DATA.flatMap(r=>[recQ(r),upQ(r)]).filter(Boolean))]
+    .sort((a,b)=>(a.slice(3)+a.slice(0,2)).localeCompare(b.slice(3)+b.slice(0,2)));
+  sel.innerHTML='';
+  qs.forEach(q=>{const o=new Option(q,q);if(q===selectedQTD)o.selected=true;sel.add(o);});
+  if(!qs.includes(selectedQTD)&&qs.length){selectedQTD=qs[qs.length-1];sel.value=selectedQTD;}
+}
+function setQTDQuarter(q){selectedQTD=q;renderQTD();}
+
+function renderQTD(){
+  const q=selectedQTD,sc=scopeQuarter(DATA,q);
+  document.querySelectorAll('.qtd-label').forEach(e=>e.textContent=q);
+  const rD=sc.rec.reduce((a,r)=>a+recD(r),0),uD=sc.up.reduce((a,r)=>a+upD(r),0);
+  document.getElementById('q-recD').textContent=fmtD(rD);
+  document.getElementById('q-upD').textContent=fmtD(uD);
+  document.getElementById('q-dollarPct').textContent=fmtPct(uD,rD);
+  document.getElementById('q-recN').textContent=sc.rec.length.toLocaleString();
+  document.getElementById('q-upN').textContent=sc.up.length.toLocaleString();
+  document.getElementById('q-convPct').textContent=fmtPct(sc.up.length,sc.rec.length);
+  drawDualMonthly('q1',aggMonthly(sc,false));
+  drawButterfly('q2',aggBy(sc,'PCSM'),20);
+  drawButterfly('q3',aggBy(sc,'Coach'),20);
+  drawStatusBar('q4',aggStatus(sc.rec),'q4-cap');
+  const qcoh=aggBy(sc,'Cohort or Escalation Type');
+  drawHBar('q5',sortBy(qcoh,'recD'),'name','recD',NAVY,10);
+  drawHBar('q5b',sortBy(qcoh,'upD').filter(o=>o.upD>0),'name','upD',ORANGE,10);
+  document.getElementById('q-accounts').innerHTML=accountTable(
+    DATA.filter(r=>recQ(r)===q||(isUpgraded(r)&&upQ(r)===q)));
+}
+
+function setPcsmPeriod(p){pcsmPeriod=p;document.getElementById('pPeriodYTD').classList.toggle('active',p==='ytd');document.getElementById('pPeriodQTD').classList.toggle('active',p==='qtd');renderPCSM();}
+function setCoachPeriod(p){coachPeriod=p;document.getElementById('cPeriodYTD').classList.toggle('active',p==='ytd');document.getElementById('cPeriodQTD').classList.toggle('active',p==='qtd');renderCoach();}
+
+function personPane(who,key,period,otherLabel){
+  const rows=DATA.filter(r=>g(r,key)===who);
+  const sc=period==='qtd'?scopeQuarter(rows,selectedQTD):scopeYTD(rows);
+  const rD=sc.rec.reduce((a,r)=>a+recD(r),0),uD=sc.up.reduce((a,r)=>a+upD(r),0);
+  const rN=sc.rec.length,uN=sc.up.length;
+  const periodLbl=period==='qtd'?selectedQTD:String(YEAR)+' YTD';
+  const uid=key==='PCSM'?'p':'c';
+  return'<div class="kpi-row-6">'+
+    '<div class="kpi hero"><div class="kpi-val white">'+fmtD(rD)+'</div><div class="kpi-lbl kl">Dollars Recommended</div><div class="kpi-sub">'+esc(periodLbl)+'</div></div>'+
+    '<div class="kpi hero"><div class="kpi-val">'+fmtD(uD)+'</div><div class="kpi-lbl kl">Dollars Upgraded</div><div class="kpi-sub">'+esc(periodLbl)+'</div></div>'+
+    '<div class="kpi hero"><div class="kpi-val green">'+fmtPct(uD,rD)+'</div><div class="kpi-lbl kl">Dollar Capture Rate</div><div class="kpi-sub">'+fmtD(uD)+' of '+fmtD(rD)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-val navy">'+rN+'</div><div class="kpi-lbl">Recommendations</div></div>'+
+    '<div class="kpi"><div class="kpi-val">'+uN+'</div><div class="kpi-lbl">Upgrades</div></div>'+
+    '<div class="kpi"><div class="kpi-val green">'+fmtPct(uN,rN)+'</div><div class="kpi-lbl">Upgrade Conversion</div></div>'+
+    '</div>'+
+    '<div class="grid">'+
+      '<div class="panel full"><div class="panel-title">Monthly Recommended vs. Upgraded</div><svg id="'+uid+'m1" height="220"></svg>'+
+        '<div class="legend"><div class="leg"><div class="leg-dot" style="background:#0F1735"></div>Dollars Recommended</div><div class="leg"><div class="leg-dot" style="background:#FF5000"></div>Dollars Upgraded</div><div class="leg"><div class="leg-dot" style="background:#2D9D6A"></div>Capture rate</div></div></div>'+
+      '<div class="panel"><div class="panel-title">Status Mix</div><svg id="'+uid+'m2" height="190"></svg></div>'+
+      '<div class="panel"><div class="panel-title">By Cohort or Escalation Type</div><div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div><svg id="'+uid+'m3"></svg></div>'+
+      '<div class="panel full"><div class="panel-title">'+esc(otherLabel)+' Breakdown</div><div id="'+uid+'m4"></div></div>'+
+      '<div class="panel full"><div class="panel-title">Account Detail</div><div class="table-wrap" id="'+uid+'m5"></div></div>'+
+    '</div>'+
+    '<div data-payload="1"></div>';
+}
+
+function renderPCSM(){
+  const who=document.getElementById('pcsmSel').value;
+  const box=document.getElementById('pcsm-content');
+  if(!who){box.innerHTML='<div class="empty-state"><h3>Select a PCSM above</h3><p>Choose a PCSM to see recommendations made, upgrades landed, and the account level detail behind both.</p></div>';return;}
+  box.innerHTML=personPane(who,'PCSM',pcsmPeriod,'Coach');
+  const rows=DATA.filter(r=>g(r,'PCSM')===who);
+  const sc=pcsmPeriod==='qtd'?scopeQuarter(rows,selectedQTD):scopeYTD(rows);
+  drawDualMonthly('pm1',aggMonthly(sc,pcsmPeriod!=='qtd'));
+  drawStatusBar('pm2',aggStatus(sc.rec));
+  drawButterfly('pm3',aggBy(sc,'Cohort or Escalation Type'),10,{wideNames:true});
+  document.getElementById('pm4').innerHTML=scorecardTable(aggBy(sc,'Coach'),'Coach');
+  const scoped=pcsmPeriod==='qtd'
+    ? rows.filter(r=>recQ(r)===selectedQTD||(isUpgraded(r)&&upQ(r)===selectedQTD))
+    : rows.filter(r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
+  document.getElementById('pm5').innerHTML=accountTable(scoped,{showPcsm:false});
+}
+
+function renderCoach(){
+  const who=document.getElementById('coachSel').value;
+  const box=document.getElementById('coach-content');
+  if(!who){box.innerHTML='<div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the PCSMs behind it.</p></div>';return;}
+  box.innerHTML=personPane(who,'Coach',coachPeriod,'PCSM');
+  const rows=DATA.filter(r=>g(r,'Coach')===who);
+  const sc=coachPeriod==='qtd'?scopeQuarter(rows,selectedQTD):scopeYTD(rows);
+  drawDualMonthly('cm1',aggMonthly(sc,coachPeriod!=='qtd'));
+  drawStatusBar('cm2',aggStatus(sc.rec));
+  drawButterfly('cm3',aggBy(sc,'Cohort or Escalation Type'),10,{wideNames:true});
+  document.getElementById('cm4').innerHTML=scorecardTable(aggBy(sc,'PCSM'),'PCSM');
+  const scoped=coachPeriod==='qtd'
+    ? rows.filter(r=>recQ(r)===selectedQTD||(isUpgraded(r)&&upQ(r)===selectedQTD))
+    : rows.filter(r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
+  document.getElementById('cm5').innerHTML=accountTable(scoped,{showCoach:false});
+}
+
+/* ---------------- raw data tab ---------------- */
+function fillSelect(id,vals,allLabel){
+  const sel=document.getElementById(id);if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">'+allLabel+'</option>';
+  vals.forEach(v=>sel.add(new Option(v,v)));
+  if(cur)sel.value=cur;
+}
+function filteredRows(){
+  const c=document.getElementById('fCoach').value,p=document.getElementById('fPcsm').value,
+        st=document.getElementById('fStatus').value,q=document.getElementById('fQuarter').value;
+  return DATA.filter(r=>(!c||g(r,'Coach')===c)&&(!p||g(r,'PCSM')===p)&&(!st||g(r,'Status')===st)&&(!q||recQ(r)===q));
+}
+function dataQualityLine(){
+  const noP=DATA.filter(r=>!g(r,'PCSM')).length,noC=DATA.filter(r=>!g(r,'Coach')).length;
+  const noRec=DATA.filter(r=>!g(r,'Date Recommended')).length;
+  const noAmt=DATA.filter(r=>!recD(r)).length;
+  const upNoAmt=DATA.filter(r=>isUpgraded(r)&&!upD(r)).length;
+  const bits=[];
+  if(noP)bits.push(noP+' with no Submitted By value');
+  if(noC)bits.push(noC+' with no assignee');
+  if(noRec)bits.push(noRec+' with no Date Recommended');
+  if(noAmt)bits.push(noAmt+' with no Dollar Amount Recommended');
+  if(upNoAmt)bits.push(upNoAmt+' upgraded with no Dollar Amount Increased');
+  if(!bits.length)return'<strong>Field completeness:</strong> every record has a PCSM, coach, recommendation date, and recommended amount.<br>';
+  return'<strong>Field completeness:</strong> '+bits.join(', ')+'. These records still count in the totals but fall out of the affected breakdowns.<br>';
+}
+function clearFilters(){['fCoach','fPcsm','fStatus','fQuarter'].forEach(id=>document.getElementById(id).value='');renderLog();}
+function renderLog(){
+  const rows=filteredRows();
+  document.getElementById('logCount').textContent='('+rows.length.toLocaleString()+' of '+DATA.length.toLocaleString()+' records)';
+  document.getElementById('logContent').innerHTML=accountTable(rows);
+  const byStatus=aggStatus(DATA);
+  document.getElementById('sourceContent').innerHTML=
+    '<div class="note-box"><strong>Source:</strong> Asana project <em>Budget Increase Recommendations</em>. '+
+    'Three sections are pulled: Reviewed - No Upgrade Yet, Reviewed - Upgraded 2026, and No Longer Counts 2026.<br>'+
+    '<strong>Refresh:</strong> automated export twice daily at 12:00 AM and 12:00 PM Central.<br>'+
+    '<strong>PCSM:</strong> the Submitted By field. <strong>Coach:</strong> the Asana assignee.<br>'+
+    dataQualityLine()+
+    '<strong>Capture rate:</strong> Dollar Amount Increased divided by Dollar Amount Recommended. '+
+    '<strong>Upgrade conversion:</strong> upgraded records divided by all reviewed records, including No Longer Counts.<br>'+
+    '<strong>Generated:</strong> '+esc(DATA_TS)+'</div>'+
+    '<table class="log-table" style="margin-top:14px"><thead><tr><th>Section</th><th class="num">Records</th><th class="num">$ Recommended</th><th class="num">$ Increased</th></tr></thead><tbody>'+
+    byStatus.map(d=>'<tr><td>'+statusBadge(d.label)+'</td><td class="num">'+d.n.toLocaleString()+'</td><td class="num">'+fmtD(d.recD)+'</td><td class="num">'+fmtD(d.upD)+'</td></tr>').join('')+
+    '</tbody></table>';
+}
+/* Fixed column order so an export dropped into Excel always looks the same,
+   regardless of which optional fields happen to be filled in. */
+const COLUMNS=['Task ID','Section','Status','Account Name','PCSM','Coach',
+  'Cohort or Escalation Type','Other Product Recommended',
+  'Date Recommended','Month Recommended','Quarter Recommended',
+  'Date Upgrade Happened','Month Upgraded','Quarter Upgraded',
+  'Date Reviewed Last','Date No Longer Valid',
+  'Dollar Amount Recommended','Dollar Amount Increased',
+  'EAID','Campaign ID','Task Name','Created At','Modified At','Task URL'];
+
+function writeCSV(rows,filename){
+  if(!rows.length){alert('There is nothing to export.');return;}
+  const present=new Set(rows.flatMap(r=>Object.keys(r)));
+  const cols=COLUMNS.filter(c=>present.has(c)).concat([...present].filter(c=>!COLUMNS.includes(c)));
+  const q=v=>{const s=String(v==null?'':v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const csv=[cols.join(',')].concat(rows.map(r=>cols.map(c=>q(r[c])).join(','))).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=filename;a.click();URL.revokeObjectURL(a.href);
+}
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function exportAll(){writeCSV(DATA,'budget-increase-recommendations_all_'+stamp()+'.csv');}
+function exportCSV(){writeCSV(filteredRows(),'budget-increase-recommendations_filtered_'+stamp()+'.csv');}
+
+/* ---------------- shell ---------------- */
+function showTab(id,el){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('pane-'+id).classList.add('active');
+  el.classList.add('active');
+  if(id==='qtd')renderQTD();
+  if(id==='summary')renderSummary();
+  if(id==='pcsm')renderPCSM();
+  if(id==='coach')renderCoach();
+  if(id==='log')renderLog();
+}
+function toggleUpload(){document.getElementById('uploadBar').classList.toggle('open');}
+
+function renderAll(){
+  document.getElementById('lastUpdated').textContent=DATA_TS||'--';
+  const dot=document.getElementById('dataDot'),lbl=document.getElementById('dataLabel');
+  dot.className='dot '+(DATA_SOURCE==='local'?'sample':'live');
+  lbl.textContent=DATA_SOURCE==='local'?'Local preview':'Live Asana data';
+  document.getElementById('hdrDesc').textContent=
+    'Budget increase recommendations logged in Asana, tracked from recommendation through upgrade. '+
+    DATA.length.toLocaleString()+' records across Reviewed - No Upgrade Yet, Reviewed - Upgraded 2026, and No Longer Counts 2026. '+
+    'Refreshed twice daily at 12:00 AM and 12:00 PM Central.';
+  fillSelect('pcsmSel',uniqVals('PCSM'),'-- Select PCSM --');
+  fillSelect('coachSel',uniqVals('Coach'),'-- Select Coach --');
+  fillSelect('fCoach',uniqVals('Coach'),'All Coaches');
+  fillSelect('fPcsm',uniqVals('PCSM'),'All PCSMs');
+  fillSelect('fStatus',STATUS_ORDER.filter(s=>DATA.some(r=>g(r,'Status')===s)),'All Statuses');
+  fillSelect('fQuarter',[...new Set(DATA.map(recQ).filter(Boolean))].sort(),'All Quarters (Recommended)');
+  populateQTDDropdown();
+  renderSummary();
+}
+
+function handleFiles(files){
+  const f=files&&files[0];if(!f)return;
+  const ov=document.getElementById('loadingOverlay');
+  document.getElementById('loadingMsg').textContent='Reading '+f.name+'...';
+  ov.classList.add('show');
+  const script=document.createElement('script');
+  script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  const go=()=>{
+    const fr=new FileReader();
+    fr.onload=e=>{
+      try{
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        const sheet=wb.Sheets['Raw Data']||wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+        const keep=new Set(['Reviewed - No Upgrade Yet','Reviewed - Upgraded 2026','No Longer Counts 2026']);
+        DATA=rows.filter(r=>!r.Section||keep.has(String(r.Section).trim()));
+        DATA_SOURCE='local';DATA_TS='Local file: '+f.name;
+        renderAll();
+      }catch(err){alert('Could not read that file: '+err.message);}
+      ov.classList.remove('show');
+    };
+    fr.readAsArrayBuffer(f);
+  };
+  if(window.XLSX)go();else{script.onload=go;script.onerror=()=>{ov.classList.remove('show');alert('Could not load the spreadsheet reader.');};document.head.appendChild(script);}
+}
+
+window.addEventListener('resize',()=>{
+  const active=document.querySelector('.pane.active');
+  if(!active)return;
+  const id=active.id.replace('pane-','');
+  if(id==='summary')renderSummary();else if(id==='qtd')renderQTD();
+  else if(id==='pcsm')renderPCSM();else if(id==='coach')renderCoach();
+});
+
+(function init(){
+  if(typeof __EMBEDDED_DATA__!=='undefined'&&Array.isArray(__EMBEDDED_DATA__)&&__EMBEDDED_DATA__.length){
+    DATA=__EMBEDDED_DATA__;DATA_SOURCE='embedded';
+  }else{
+    DATA=[];DATA_SOURCE='embedded';
+  }
+  renderAll();
+})();
+</script>
+</body>
+</html>

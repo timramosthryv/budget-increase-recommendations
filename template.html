@@ -46,12 +46,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .kpi-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:18px 36px 2px}
 .kpi-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;padding:18px 36px 2px}
 .kpi-row-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:18px 36px 2px}
-.pill-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;padding:18px 36px 2px}
-.pill{display:flex;align-items:center;gap:11px;background:white;border:1px solid #E2E8F0;border-radius:999px;padding:10px 20px 10px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.pill-val{font-size:21px;font-weight:700;color:#FF5000;letter-spacing:-.5px;white-space:nowrap;line-height:1.1}
+/* flex:1 makes every pill stretch to share the full row width instead of
+   shrinking to its text. The basis sets the wrap point on narrower screens.
+   Labels wrap rather than overflow, so a long one like "excluded, no longer
+   counts" takes two lines instead of spilling past the pill edge. */
+.pill-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;padding:20px 36px 4px}
+.pill{flex:1 1 210px;display:flex;align-items:center;gap:14px;background:white;border:1px solid #E2E8F0;border-radius:999px;padding:16px 26px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.pill-val{font-size:27px;font-weight:700;color:#FF5000;letter-spacing:-1px;white-space:nowrap;line-height:1.05;flex-shrink:0}
 .pill-txt{display:flex;flex-direction:column;min-width:0}
-.pill-lbl{font-size:10px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
-.pill-sub{font-size:10px;color:#A0AEC0;margin-top:2px;white-space:nowrap}
+.pill-lbl{font-size:11px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.6px;line-height:1.3}
+.pill-sub{font-size:11px;color:#A0AEC0;margin-top:3px;line-height:1.3}
 .pill.navy .pill-val{color:#0F1735}
 .pill.dark{background:#0F1735;border-color:#0F1735}
 .pill.dark .pill-val{color:white}
@@ -61,7 +65,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .pill.pending .pill-val{color:#8A6A00}
 .pill.pending .pill-lbl{color:#8A6A00}
 .pill.pending .pill-sub{color:#A98F4A}
-@media (max-width:1100px){.pill-sub{display:none}.pill{padding:9px 16px}.pill-val{font-size:18px}}
+@media (max-width:1240px){.pill{flex:1 1 240px;padding:14px 20px}.pill-val{font-size:23px}}
+@media (max-width:760px){.pill-sub{display:none}}
 .kpi{background:white;border-radius:10px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
 .kpi.hero{background:#0F1735}
 .kpi-val{font-size:28px;font-weight:700;color:#FF5000;letter-spacing:-1px}
@@ -101,6 +106,7 @@ svg{display:block;width:100%}
 .log-table tr:hover td{background:#FAFBFC}
 .log-table tfoot td{font-weight:700;color:#0F1735;background:#F5F7FA;border-top:2px solid #DFE4ED}
 .table-wrap{max-height:540px;overflow:auto;border:1px solid #EDF2F7;border-radius:8px}
+.table-wrap.tall{max-height:1040px}
 .badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;letter-spacing:.3px}
 .badge-up{background:#F0FFF8;color:#1E7A52;border:1px solid #A8DCC3}
 .badge-open{background:#FFFBEB;color:#8A6A00;border:1px solid #EBD79A}
@@ -994,7 +1000,7 @@ function renderKicker(){
           '<strong>$ Increased on These Recs</strong> is money that landed on these recommendations, which is not the same as money that landed during this period. '+
           'The By Coach tab counts upgrades by the date they happened, so its total will be higher wherever an earlier recommendation upgraded later. '+
           'The payout column stays blank until the tiers are defined.</div>'+
-        '<div class="table-wrap"><table class="log-table"><thead><tr>'+
+        '<div class="table-wrap tall"><table class="log-table"><thead><tr>'+
           '<th>#</th><th>PCSM</th><th>Coach</th><th class="num">Recommendations</th>'+
           '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased on These Recs</th>'+
           '<th style="text-align:center">Kicker Payout</th>'+

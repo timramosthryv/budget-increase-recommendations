@@ -1,1 +1,70 @@
+name: Refresh from Asana
 
+# Runs the Asana export twice a day at 12:00 AM and 12:00 PM US Central.
+#
+# GitHub Actions cron only accepts UTC, so four times are scheduled and a gate
+# step keeps only the two that land on midnight and noon Central. That keeps the
+# schedule correct through daylight saving changes without editing the cron.
+#   05:00 / 17:00 UTC = 12 AM / 12 PM CDT (summer)
+#   06:00 / 18:00 UTC = 12 AM / 12 PM CST (winter)
+#
+# Note: GitHub's scheduler can delay runs during periods of high load. A delay
+# of more than an hour would push a run outside its window and it would be
+# skipped until the next one. Use Run workflow to refresh on demand.
+
+on:
+  schedule:
+    - cron: '0 5,6,17,18 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Gate on Central time
+        id: gate
+        run: |
+          HOUR=$(TZ=America/Chicago date +%H)
+          echo "Central hour is $HOUR"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$HOUR" = "00" ] || [ "$HOUR" = "12" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Outside the 12 AM / 12 PM Central window. Skipping."
+          fi
+
+      - name: Checkout repo
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: pip install openpyxl
+
+      - name: Export from Asana
+        if: steps.gate.outputs.run == 'true'
+        env:
+          ASANA_TOKEN: ${{ secrets.ASANA_TOKEN }}
+        run: python fetch_asana.py
+
+      - name: Build dashboard
+        if: steps.gate.outputs.run == 'true'
+        run: python build.py data.xlsx
+
+      - name: Commit refreshed data
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.xlsx index.html
+          git diff --staged --quiet || git commit -m "Refresh Asana data [skip ci]"
+          git push

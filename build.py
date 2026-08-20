@@ -6,6 +6,11 @@ Output: index.html (self-contained, commit this to GitHub)
 """
 import sys, json, os
 from datetime import datetime, date
+from zoneinfo import ZoneInfo
+
+# GitHub runners are UTC. Stamp the build in US Central so the dashboard shows
+# the time the team actually works in, and label it so there is no ambiguity.
+CENTRAL = ZoneInfo("America/Chicago")
 
 KEEP_SECTIONS = {
     "Reviewed - No Upgrade Yet",
@@ -69,7 +74,8 @@ def build(xlsx_path):
     with open(template_path, 'r', encoding='utf-8') as f:
         html = f.read()
 
-    ts = datetime.now().strftime('%b %d, %Y %I:%M %p')
+    now = datetime.now(CENTRAL)
+    ts = now.strftime('%b %d, %Y ') + now.strftime('%I:%M %p').lstrip('0') + ' CT'
     json_data = json.dumps(rows, separators=(',', ':'), ensure_ascii=False)
     injection = f"// Embedded dataset - generated {ts}\nconst __EMBEDDED_DATA__={json_data};"
     html = html.replace('// @@DATA_INJECTION@@', injection)

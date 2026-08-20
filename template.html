@@ -101,6 +101,17 @@ svg{display:block;width:100%}
 .loading-overlay p{color:white;font-size:14px;font-weight:600;letter-spacing:.3px}
 .no-data-banner{background:#FFF7F0;border:1.5px solid #FFB899;border-radius:8px;padding:16px 22px;margin:20px 36px;font-size:13px;color:#8B4513;line-height:1.7}
 .no-data-banner strong{color:#FF5000}
+.krow{cursor:pointer}
+.krow:hover td{background:#F5F7FA}
+.kcaret{display:inline-block;width:10px;color:#A0AEC0;font-size:10px}
+.kdetail{display:none;background:#FBFCFD}
+.kdetail.open{display:table-row}
+.kdetail-inner{padding:0 0 8px 0}
+.kdetail table{width:100%;border-collapse:collapse}
+.kdetail th{font-size:10px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px;text-align:left;padding:7px 12px;background:#F0F4F8;border-bottom:1px solid #DFE4ED}
+.kdetail td{font-size:12px;color:#4A5568;padding:6px 12px;border-bottom:1px solid #EDF2F7}
+.kdetail th.num,.kdetail td.num{text-align:right;font-variant-numeric:tabular-nums}
+.pending{display:inline-block;background:#FFFBEB;color:#8A6A00;border:1px solid #EBD79A;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700;letter-spacing:.3px}
 .reconcile{padding:10px 36px 0;font-size:11px;color:#718096;line-height:1.6}
 .reconcile strong{color:#0F1735}
 .note-box{background:#F5F7FA;border:1px solid #E2E8F0;border-radius:8px;padding:14px 18px;font-size:12px;color:#4A5568;line-height:1.8}
@@ -158,7 +169,7 @@ svg{display:block;width:100%}
   <div class="tab" onclick="showTab('qtd',this)">QTD Summary</div>
   <div class="tab" onclick="showTab('pcsm',this)">By PCSM</div>
   <div class="tab" onclick="showTab('coach',this)">By Coach</div>
-  <div class="tab" onclick="showTab('kicker',this)">Kicker</div>
+  <div class="tab" onclick="showTab('kicker',this)">Recommendation Kickers</div>
   <div class="tab" onclick="showTab('log',this)">Raw Data</div>
 </div>
 
@@ -317,16 +328,16 @@ svg{display:block;width:100%}
 
 <!-- ============ KICKER (placeholder) ============ -->
 <div class="pane" id="pane-kicker">
-  <div class="grid" style="grid-template-columns:1fr">
-    <div class="panel full">
-      <div class="panel-title">Kicker</div>
-      <div class="empty-state">
-        <h3>Kicker criteria not yet configured</h3>
-        <p>This tab is reserved for the budget increase kicker calculation.<br>
-        Once the qualifying rules and payout tiers are defined, they get added here and the tab fills in automatically from the same Asana export.</p>
-      </div>
+  <div class="selector-row">
+    <label>Period</label>
+    <div class="period-toggle">
+      <button class="period-btn active" id="kPeriodQTD" onclick="setKickerPeriod('qtd')">QTD</button>
+      <button class="period-btn" id="kPeriodYTD" onclick="setKickerPeriod('ytd')">YTD</button>
     </div>
+    <label id="kQtrLabel">Quarter</label>
+    <select id="kQuarterSel" onchange="setKickerQuarter(this.value)"></select>
   </div>
+  <div id="kicker-content"></div>
 </div>
 
 <!-- ============ RAW DATA ============ -->
@@ -802,6 +813,115 @@ function renderCoach(){
   document.getElementById('cm5').innerHTML=accountTable(scoped,{showCoach:false});
 }
 
+/* ---------------- Recommendation Kickers ----------------
+   Ranked by volume of recommendations, highest first, matching the SaaS Growth
+   kicker tracker layout. Each PCSM row expands to the account level detail:
+   account name, cohort or escalation type, date recommended, dollar amount.
+
+   The payout column is intentionally not calculated yet. The qualifying rule
+   and tiers have not been defined for recommendation kickers, and inventing a
+   threshold would put numbers in front of leaders that nobody agreed to. */
+let kickerPeriod='qtd', kickerQuarter=null;
+
+function setKickerPeriod(p){
+  kickerPeriod=p;
+  document.getElementById('kPeriodQTD').classList.toggle('active',p==='qtd');
+  document.getElementById('kPeriodYTD').classList.toggle('active',p==='ytd');
+  const show=p==='qtd';
+  document.getElementById('kQuarterSel').style.display=show?'':'none';
+  document.getElementById('kQtrLabel').style.display=show?'':'none';
+  renderKicker();
+}
+function setKickerQuarter(q){kickerQuarter=q;renderKicker();}
+function populateKickerQuarters(){
+  const sel=document.getElementById('kQuarterSel');if(!sel)return;
+  const qs=[...new Set(DATA.map(recQ).filter(Boolean))]
+    .sort((a,b)=>(a.slice(3)+a.slice(0,2)).localeCompare(b.slice(3)+b.slice(0,2)));
+  if(!kickerQuarter||!qs.includes(kickerQuarter))kickerQuarter=qs.length?qs[qs.length-1]:null;
+  sel.innerHTML='';
+  qs.forEach(q=>{const o=new Option(q,q);if(q===kickerQuarter)o.selected=true;sel.add(o);});
+}
+function toggleKicker(i){
+  const row=document.getElementById('kd-'+i);
+  if(row)row.classList.toggle('open');
+  const car=document.getElementById('kc-'+i);
+  if(car)car.textContent=row&&row.classList.contains('open')?'▼':'▶';
+}
+function renderKicker(){
+  const cont=document.getElementById('kicker-content');if(!cont)return;
+  if(!DATA.length){cont.innerHTML='<div class="empty-state"><h3>No data loaded</h3></div>';return;}
+  const inPeriod = kickerPeriod==='qtd'
+    ? (r=>recQ(r)===kickerQuarter)
+    : (r=>recYear(r)===YEAR);
+  const periodLbl = kickerPeriod==='qtd' ? (kickerQuarter||'--') : String(YEAR)+' YTD';
+  const rows=DATA.filter(inPeriod);
+
+  const byP={};
+  rows.forEach(r=>{
+    const p=(g(r,'PCSM')||'Unassigned');
+    if(!byP[p])byP[p]={name:p,coaches:{},recs:[],recN:0,recD:0,upN:0,upD:0};
+    const o=byP[p];
+    o.recs.push(r);o.recN++;o.recD+=recD(r);
+    const co=g(r,'Coach')||'--';o.coaches[co]=(o.coaches[co]||0)+1;
+    if(isUpgraded(r)){o.upN++;o.upD+=upD(r);}
+  });
+  const list=Object.values(byP).map(o=>{
+    o.coach=Object.entries(o.coaches).sort((a,b)=>b[1]-a[1])[0][0];
+    o.recs.sort((a,b)=>String(g(b,'Date Recommended')).localeCompare(String(g(a,'Date Recommended'))));
+    return o;
+  }).sort((a,b)=>b.recN-a.recN||b.recD-a.recD||a.name.localeCompare(b.name));
+
+  const totalRecs=list.reduce((s,o)=>s+o.recN,0);
+  const totalD=list.reduce((s,o)=>s+o.recD,0);
+  const active=list.length;
+  const top=list[0];
+
+  const trows=list.map((o,i)=>{
+    const det=o.recs.map(r=>'<tr>'+
+      '<td>'+esc(g(r,'Account Name')||g(r,'Task Name'))+'</td>'+
+      '<td>'+esc(g(r,'Cohort or Escalation Type')||'--')+'</td>'+
+      '<td>'+esc(g(r,'Date Recommended')||'--')+'</td>'+
+      '<td class="num">'+(recD(r)?fmtD(recD(r)):'--')+'</td>'+
+      '<td>'+statusBadge(g(r,'Status'))+'</td>'+
+    '</tr>').join('');
+    return '<tr class="krow" onclick="toggleKicker('+i+')">'+
+        '<td><strong>'+(i+1)+'</strong></td>'+
+        '<td><span class="kcaret" id="kc-'+i+'">▶</span> <strong style="color:#0F1735">'+esc(o.name)+'</strong></td>'+
+        '<td style="color:#718096">'+esc(o.coach)+'</td>'+
+        '<td class="num"><span class="badge badge-open">'+o.recN+'</span></td>'+
+        '<td class="num">'+fmtD(o.recD)+'</td>'+
+        '<td class="num">'+o.upN+'</td>'+
+        '<td class="num">'+(o.upD?fmtD(o.upD):'--')+'</td>'+
+        '<td style="text-align:center"><span class="pending">Pending</span></td>'+
+      '</tr>'+
+      '<tr class="kdetail" id="kd-'+i+'"><td colspan="8"><div class="kdetail-inner">'+
+        '<table><thead><tr><th>Account Name</th><th>Thryv Leads Cohort or Escalation Type</th>'+
+        '<th>Date Recommended</th><th class="num">Dollar Amount Recommended</th><th>Status</th></tr></thead>'+
+        '<tbody>'+det+'</tbody></table></div></td></tr>';
+  }).join('');
+
+  cont.innerHTML='<div class="kpi-row-5">'+
+    '<div class="kpi"><div class="kpi-val navy">'+totalRecs.toLocaleString()+'</div><div class="kpi-lbl">Total Recommendations</div><div class="kpi-sub ks">'+esc(periodLbl)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-val">'+active+'</div><div class="kpi-lbl">PCSMs With Activity</div><div class="kpi-sub ks">Submitted at least one</div></div>'+
+    '<div class="kpi"><div class="kpi-val white" style="color:#0F1735">'+fmtD(totalD)+'</div><div class="kpi-lbl">Dollars Recommended</div><div class="kpi-sub ks">'+esc(periodLbl)+'</div></div>'+
+    '<div class="kpi"><div class="kpi-val navy">'+(active?(totalRecs/active).toFixed(1):'--')+'</div><div class="kpi-lbl">Avg Recommendations per PCSM</div><div class="kpi-sub ks">'+(top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'')+'</div></div>'+
+    '<div class="kpi" style="background:#FFFBEB;border:1.5px solid #EBD79A"><div class="kpi-val" style="color:#8A6A00">&mdash;</div><div class="kpi-lbl">Total Kicker Payout</div><div class="kpi-sub ks">Awaiting qualifying rule</div></div>'+
+    '</div>'+
+    '<div class="grid" style="grid-template-columns:1fr">'+
+      '<div class="panel full">'+
+        '<div class="panel-title">Recommendation Kicker Tracker &mdash; '+esc(periodLbl)+'</div>'+
+        '<div class="panel-sub">All '+active+' PCSMs with activity in the period, ranked by number of recommendations submitted. '+
+          'Click any row to open the account level detail behind that count. '+
+          'The payout column stays blank until the qualifying threshold and tiers are defined.</div>'+
+        '<div class="table-wrap"><table class="log-table"><thead><tr>'+
+          '<th>#</th><th>PCSM</th><th>Coach</th><th class="num">Recommendations</th>'+
+          '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased</th>'+
+          '<th style="text-align:center">Kicker Payout</th>'+
+        '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
+      '</div>'+
+    '</div>';
+}
+
 /* ---------------- raw data tab ---------------- */
 function fillSelect(id,vals,allLabel){
   const sel=document.getElementById(id);if(!sel)return;
@@ -884,6 +1004,7 @@ function showTab(id,el){
   if(id==='summary')renderSummary();
   if(id==='pcsm')renderPCSM();
   if(id==='coach')renderCoach();
+  if(id==='kicker')renderKicker();
   if(id==='log')renderLog();
 }
 function toggleUpload(){document.getElementById('uploadBar').classList.toggle('open');}
@@ -904,6 +1025,7 @@ function renderAll(){
   fillSelect('fStatus',STATUS_ORDER.filter(s=>DATA.some(r=>g(r,'Status')===s)),'All Statuses');
   fillSelect('fQuarter',[...new Set(DATA.map(recQ).filter(Boolean))].sort(),'All Quarters (Recommended)');
   populateQTDDropdown();
+  populateKickerQuarters();
   renderSummary();
 }
 

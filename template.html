@@ -45,6 +45,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:18px 36px 2px}
 .kpi-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:18px 36px 2px}
 .kpi-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;padding:18px 36px 2px}
+.kpi-row-5{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;padding:18px 36px 2px}
+.pill-row{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px;padding:18px 36px 2px}
+.pill{display:flex;align-items:center;gap:11px;background:white;border:1px solid #E2E8F0;border-radius:999px;padding:10px 20px 10px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.pill-val{font-size:21px;font-weight:700;color:#FF5000;letter-spacing:-.5px;white-space:nowrap;line-height:1.1}
+.pill-txt{display:flex;flex-direction:column;min-width:0}
+.pill-lbl{font-size:10px;font-weight:700;color:#4A5568;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap}
+.pill-sub{font-size:10px;color:#A0AEC0;margin-top:2px;white-space:nowrap}
+.pill.navy .pill-val{color:#0F1735}
+.pill.dark{background:#0F1735;border-color:#0F1735}
+.pill.dark .pill-val{color:white}
+.pill.dark .pill-lbl{color:#A8B4C8}
+.pill.dark .pill-sub{color:#8290AB}
+.pill.pending{background:#FFFBEB;border-color:#EBD79A}
+.pill.pending .pill-val{color:#8A6A00}
+.pill.pending .pill-lbl{color:#8A6A00}
+.pill.pending .pill-sub{color:#A98F4A}
+@media (max-width:1100px){.pill-sub{display:none}.pill{padding:9px 16px}.pill-val{font-size:18px}}
 .kpi{background:white;border-radius:10px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.07)}
 .kpi.hero{background:#0F1735}
 .kpi-val{font-size:28px;font-weight:700;color:#FF5000;letter-spacing:-1px}
@@ -900,12 +917,15 @@ function renderKicker(){
         '<tbody>'+det+'</tbody></table></div></td></tr>';
   }).join('');
 
-  cont.innerHTML='<div class="kpi-row-5">'+
-    '<div class="kpi"><div class="kpi-val navy">'+totalRecs.toLocaleString()+'</div><div class="kpi-lbl">Total Recommendations</div><div class="kpi-sub ks">'+esc(periodLbl)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-val">'+active+'</div><div class="kpi-lbl">PCSMs With Activity</div><div class="kpi-sub ks">Submitted at least one</div></div>'+
-    '<div class="kpi"><div class="kpi-val white" style="color:#0F1735">'+fmtD(totalD)+'</div><div class="kpi-lbl">Dollars Recommended</div><div class="kpi-sub ks">'+esc(periodLbl)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-val navy">'+(active?(totalRecs/active).toFixed(1):'--')+'</div><div class="kpi-lbl">Avg Recommendations per PCSM</div><div class="kpi-sub ks">'+(top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'')+'</div></div>'+
-    '<div class="kpi" style="background:#FFFBEB;border:1.5px solid #EBD79A"><div class="kpi-val" style="color:#8A6A00">&mdash;</div><div class="kpi-lbl">Total Kicker Payout</div><div class="kpi-sub ks">Awaiting qualifying rule</div></div>'+
+  const pill=(val,lbl,sub,cls)=>'<div class="pill'+(cls?' '+cls:'')+'">'+
+    '<div class="pill-val">'+val+'</div><div class="pill-txt">'+
+    '<div class="pill-lbl">'+lbl+'</div>'+(sub?'<div class="pill-sub">'+sub+'</div>':'')+'</div></div>';
+  cont.innerHTML='<div class="pill-row">'+
+    pill(totalRecs.toLocaleString(),'Total Recommendations',esc(periodLbl),'dark')+
+    pill(active,'PCSMs With Activity','Submitted at least one')+
+    pill(fmtD(totalD),'Dollars Recommended',esc(periodLbl),'navy')+
+    pill(active?(totalRecs/active).toFixed(1):'--','Avg per PCSM',top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'','navy')+
+    pill('&mdash;','Total Kicker Payout','Awaiting qualifying rule','pending')+
     '</div>'+
     '<div class="grid" style="grid-template-columns:1fr">'+
       '<div class="panel full">'+

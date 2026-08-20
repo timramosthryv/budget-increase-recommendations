@@ -920,7 +920,15 @@ function renderKicker(){
     ? (r=>recQ(r)===kickerQuarter)
     : (r=>recYear(r)===YEAR);
   const periodLbl = kickerPeriod==='qtd' ? (kickerQuarter||'--') : String(YEAR)+' YTD';
-  const rows=DATA.filter(inPeriod);
+  /* The kicker pays on the recommendation itself, so a recommendation that lands
+     in No Longer Counts stops qualifying. It is excluded from the ranking and the
+     detail, and reported separately so the drop is visible rather than silent.
+     Upgraded dollars stay on a cohort basis: money that landed on the
+     recommendations made in this period, not money that happened to land in it. */
+  const inScope=DATA.filter(inPeriod);
+  const rows=inScope.filter(r=>g(r,'Status')!=='No Longer Counts');
+  const dropped=inScope.filter(r=>g(r,'Status')==='No Longer Counts');
+  const droppedD=dropped.reduce((a,r)=>a+recD(r),0);
 
   const byP={};
   rows.forEach(r=>{
@@ -974,17 +982,21 @@ function renderKicker(){
     pill(active,'PCSMs With Activity','Submitted at least one')+
     pill(fmtD(totalD),'Dollars Recommended',esc(periodLbl),'navy')+
     pill(active?(totalRecs/active).toFixed(1):'--','Avg per PCSM',top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'','navy')+
-    pill('&mdash;','Total Kicker Payout','Awaiting qualifying rule','pending')+
+    pill(dropped.length.toLocaleString(),'Excluded, No Longer Counts',fmtD(droppedD)+' not qualifying')+
+    pill('&mdash;','Total Kicker Payout','Awaiting payout tiers','pending')+
     '</div>'+
     '<div class="grid" style="grid-template-columns:1fr">'+
       '<div class="panel full">'+
         '<div class="panel-title">Recommendation Kicker Tracker &mdash; '+esc(periodLbl)+'</div>'+
-        '<div class="panel-sub">All '+active+' PCSMs with activity in the period, ranked by number of recommendations submitted. '+
+        '<div class="panel-sub">All '+active+' PCSMs with qualifying activity in the period, ranked by number of recommendations submitted. '+
           'Click any row to open the account level detail behind that count. '+
-          'The payout column stays blank until the qualifying threshold and tiers are defined.</div>'+
+          'Recommendations that moved to No Longer Counts are excluded, '+dropped.length+' in this period. '+
+          '<strong>$ Increased on These Recs</strong> is money that landed on these recommendations, which is not the same as money that landed during this period. '+
+          'The By Coach tab counts upgrades by the date they happened, so its total will be higher wherever an earlier recommendation upgraded later. '+
+          'The payout column stays blank until the tiers are defined.</div>'+
         '<div class="table-wrap"><table class="log-table"><thead><tr>'+
           '<th>#</th><th>PCSM</th><th>Coach</th><th class="num">Recommendations</th>'+
-          '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased</th>'+
+          '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased on These Recs</th>'+
           '<th style="text-align:center">Kicker Payout</th>'+
         '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
       '</div>'+

@@ -325,6 +325,8 @@ svg{display:block;width:100%}
       <button class="period-btn active" id="pPeriodYTD" onclick="setPcsmPeriod('ytd')">YTD</button>
       <button class="period-btn" id="pPeriodQTD" onclick="setPcsmPeriod('qtd')">QTD</button>
     </div>
+    <label id="pQtrLabel" style="display:none">Quarter</label>
+    <select id="pQuarterSel" style="display:none" onchange="setPcsmQuarter(this.value)"></select>
   </div>
   <div id="pcsm-content"><div class="empty-state"><h3>Select a PCSM above</h3><p>Choose a PCSM to see recommendations made, upgrades landed, and the account level detail behind both.</p></div></div>
 </div>
@@ -339,6 +341,8 @@ svg{display:block;width:100%}
       <button class="period-btn active" id="cPeriodYTD" onclick="setCoachPeriod('ytd')">YTD</button>
       <button class="period-btn" id="cPeriodQTD" onclick="setCoachPeriod('qtd')">QTD</button>
     </div>
+    <label id="cQtrLabel" style="display:none">Quarter</label>
+    <select id="cQuarterSel" style="display:none" onchange="setCoachQuarter(this.value)"></select>
   </div>
   <div id="coach-content"><div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the PCSMs behind it.</p></div></div>
 </div>
@@ -643,7 +647,11 @@ function statusBadge(st){
 function accountTable(rows,opts){
   opts=opts||{};
   if(!rows.length)return'<div class="empty-state"><p>No accounts in this period.</p></div>';
-  const sorted=[...rows].sort((a,b)=>(upD(b)-upD(a))||(recD(b)-recD(a)));
+  /* Date Recommended leads the table, so order by it. A date-first table sorted
+     by dollars reads as broken. Newest first, ties broken by dollars recommended. */
+  const sorted=[...rows].sort((a,b)=>
+    String(g(b,'Date Recommended')).localeCompare(String(g(a,'Date Recommended')))||
+    (recD(b)-recD(a)));
   const showPcsm=opts.showPcsm!==false,showCoach=opts.showCoach!==false;
   let totRec=0,totUp=0;
   const body=sorted.map(r=>{
@@ -651,21 +659,24 @@ function accountTable(rows,opts){
     const url=g(r,'Task URL');
     const acct=esc(g(r,'Account Name')||g(r,'Task Name'));
     return'<tr>'+
+      '<td>'+esc(g(r,'Date Recommended')||'--')+'</td>'+
       '<td>'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener" style="color:#0F1735;text-decoration:none;border-bottom:1px dotted #CBD5E0">'+acct+'</a>':acct)+'</td>'+
       (showPcsm?'<td>'+esc(g(r,'PCSM'))+'</td>':'')+
       (showCoach?'<td>'+esc(g(r,'Coach'))+'</td>':'')+
       '<td>'+esc(g(r,'Cohort or Escalation Type'))+'</td>'+
-      '<td>'+esc(g(r,'Date Recommended'))+'</td>'+
       '<td class="num">'+(recD(r)?fmtD(recD(r)):'--')+'</td>'+
       '<td>'+statusBadge(g(r,'Status'))+'</td>'+
       '<td>'+esc(g(r,'Date Upgrade Happened')||'')+'</td>'+
       '<td class="num">'+(upD(r)?fmtD(upD(r)):'--')+'</td>'+
     '</tr>';
   }).join('');
-  const span=1+(showPcsm?1:0)+(showCoach?1:0)+3;
+  /* Columns ahead of the $ Recommended total: Recommended, Account, Cohort,
+     plus PCSM and Coach when shown. Keep this in step with the header or the
+     totals row drifts sideways. */
+  const span=3+(showPcsm?1:0)+(showCoach?1:0);
   return'<table class="log-table"><thead><tr>'+
-    '<th>Account</th>'+(showPcsm?'<th>PCSM</th>':'')+(showCoach?'<th>Coach</th>':'')+
-    '<th>Cohort / Escalation</th><th>Recommended</th><th class="num">$ Recommended</th><th>Status</th><th>Upgraded</th><th class="num">$ Increased</th>'+
+    '<th>Recommended</th><th>Account</th>'+(showPcsm?'<th>PCSM</th>':'')+(showCoach?'<th>Coach</th>':'')+
+    '<th>Cohort / Escalation</th><th class="num">$ Recommended</th><th>Status</th><th>Upgraded</th><th class="num">$ Increased</th>'+
     '</tr></thead><tbody>'+body+'</tbody>'+
     '<tfoot><tr><td colspan="'+span+'">'+sorted.length.toLocaleString()+' accounts</td>'+
     '<td class="num">'+fmtD(totRec)+'</td><td></td><td></td><td class="num">'+fmtD(totUp)+'</td></tr></tfoot></table>';
@@ -765,15 +776,53 @@ function renderQTD(){
     DATA.filter(r=>recQ(r)===q||(isUpgraded(r)&&upQ(r)===q)));
 }
 
-function setPcsmPeriod(p){pcsmPeriod=p;document.getElementById('pPeriodYTD').classList.toggle('active',p==='ytd');document.getElementById('pPeriodQTD').classList.toggle('active',p==='qtd');renderPCSM();}
-function setCoachPeriod(p){coachPeriod=p;document.getElementById('cPeriodYTD').classList.toggle('active',p==='ytd');document.getElementById('cPeriodQTD').classList.toggle('active',p==='qtd');renderCoach();}
+/* Each drill-down keeps its own quarter so a coach review does not silently
+   reuse whatever quarter was last picked on the QTD Summary tab. The selector
+   only appears in QTD mode, since it means nothing in YTD. */
+let pcsmQuarter=null, coachQuarter=null;
 
-function personPane(who,key,period,otherLabel){
+function allQuarters(){
+  return[...new Set(DATA.map(recQ).filter(Boolean))]
+    .sort((a,b)=>(a.slice(3)+a.slice(0,2)).localeCompare(b.slice(3)+b.slice(0,2)));
+}
+function fillQuarterSelect(id,current){
+  const sel=document.getElementById(id);if(!sel)return current;
+  const qs=allQuarters();
+  if(!current||!qs.includes(current))current=qs.length?qs[qs.length-1]:null;
+  sel.innerHTML='';
+  qs.forEach(q=>{const o=new Option(q,q);if(q===current)o.selected=true;sel.add(o);});
+  return current;
+}
+function showQuarterPicker(tag,show){
+  const sel=document.getElementById(tag+'QuarterSel'),lbl=document.getElementById(tag+'QtrLabel');
+  if(sel)sel.style.display=show?'':'none';
+  if(lbl)lbl.style.display=show?'':'none';
+}
+function setPcsmPeriod(p){
+  pcsmPeriod=p;
+  document.getElementById('pPeriodYTD').classList.toggle('active',p==='ytd');
+  document.getElementById('pPeriodQTD').classList.toggle('active',p==='qtd');
+  if(p==='qtd')pcsmQuarter=fillQuarterSelect('pQuarterSel',pcsmQuarter);
+  showQuarterPicker('p',p==='qtd');
+  renderPCSM();
+}
+function setCoachPeriod(p){
+  coachPeriod=p;
+  document.getElementById('cPeriodYTD').classList.toggle('active',p==='ytd');
+  document.getElementById('cPeriodQTD').classList.toggle('active',p==='qtd');
+  if(p==='qtd')coachQuarter=fillQuarterSelect('cQuarterSel',coachQuarter);
+  showQuarterPicker('c',p==='qtd');
+  renderCoach();
+}
+function setPcsmQuarter(q){pcsmQuarter=q;renderPCSM();}
+function setCoachQuarter(q){coachQuarter=q;renderCoach();}
+
+function personPane(who,key,period,otherLabel,quarter){
   const rows=DATA.filter(r=>g(r,key)===who);
-  const sc=period==='qtd'?scopeQuarter(rows,selectedQTD):scopeYTD(rows);
+  const sc=period==='qtd'?scopeQuarter(rows,quarter):scopeYTD(rows);
   const rD=sc.rec.reduce((a,r)=>a+recD(r),0),uD=sc.up.reduce((a,r)=>a+upD(r),0);
   const rN=sc.rec.length,uN=sc.up.length;
-  const periodLbl=period==='qtd'?selectedQTD:String(YEAR)+' YTD';
+  const periodLbl=period==='qtd'?(quarter||'--'):String(YEAR)+' YTD';
   const uid=key==='PCSM'?'p':'c';
   const c=cohortStats(sc.rec);
   return'<div class="kpi-row-6">'+
@@ -800,15 +849,15 @@ function renderPCSM(){
   const who=document.getElementById('pcsmSel').value;
   const box=document.getElementById('pcsm-content');
   if(!who){box.innerHTML='<div class="empty-state"><h3>Select a PCSM above</h3><p>Choose a PCSM to see recommendations made, upgrades landed, and the account level detail behind both.</p></div>';return;}
-  box.innerHTML=personPane(who,'PCSM',pcsmPeriod,'Coach');
+  box.innerHTML=personPane(who,'PCSM',pcsmPeriod,'Coach',pcsmQuarter);
   const rows=DATA.filter(r=>g(r,'PCSM')===who);
-  const sc=pcsmPeriod==='qtd'?scopeQuarter(rows,selectedQTD):scopeYTD(rows);
+  const sc=pcsmPeriod==='qtd'?scopeQuarter(rows,pcsmQuarter):scopeYTD(rows);
   drawDualMonthly('pm1',aggMonthly(sc,pcsmPeriod!=='qtd'));
   drawStatusBar('pm2',aggStatus(sc.rec));
   drawButterfly('pm3',aggBy(sc,'Cohort or Escalation Type'),10,{wideNames:true});
   document.getElementById('pm4').innerHTML=scorecardTable(aggBy(sc,'Coach'),'Coach');
   const scoped=pcsmPeriod==='qtd'
-    ? rows.filter(r=>recQ(r)===selectedQTD||(isUpgraded(r)&&upQ(r)===selectedQTD))
+    ? rows.filter(r=>recQ(r)===pcsmQuarter||(isUpgraded(r)&&upQ(r)===pcsmQuarter))
     : rows.filter(r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
   document.getElementById('pm5').innerHTML=accountTable(scoped,{showPcsm:false});
 }
@@ -817,15 +866,15 @@ function renderCoach(){
   const who=document.getElementById('coachSel').value;
   const box=document.getElementById('coach-content');
   if(!who){box.innerHTML='<div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the PCSMs behind it.</p></div>';return;}
-  box.innerHTML=personPane(who,'Coach',coachPeriod,'PCSM');
+  box.innerHTML=personPane(who,'Coach',coachPeriod,'PCSM',coachQuarter);
   const rows=DATA.filter(r=>g(r,'Coach')===who);
-  const sc=coachPeriod==='qtd'?scopeQuarter(rows,selectedQTD):scopeYTD(rows);
+  const sc=coachPeriod==='qtd'?scopeQuarter(rows,coachQuarter):scopeYTD(rows);
   drawDualMonthly('cm1',aggMonthly(sc,coachPeriod!=='qtd'));
   drawStatusBar('cm2',aggStatus(sc.rec));
   drawButterfly('cm3',aggBy(sc,'Cohort or Escalation Type'),10,{wideNames:true});
   document.getElementById('cm4').innerHTML=scorecardTable(aggBy(sc,'PCSM'),'PCSM');
   const scoped=coachPeriod==='qtd'
-    ? rows.filter(r=>recQ(r)===selectedQTD||(isUpgraded(r)&&upQ(r)===selectedQTD))
+    ? rows.filter(r=>recQ(r)===coachQuarter||(isUpgraded(r)&&upQ(r)===coachQuarter))
     : rows.filter(r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
   document.getElementById('cm5').innerHTML=accountTable(scoped,{showCoach:false});
 }

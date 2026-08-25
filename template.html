@@ -116,6 +116,7 @@ svg{display:block;width:100%}
 .empty-state{text-align:center;padding:60px 20px;color:#A0AEC0}
 .empty-state h3{font-size:16px;margin-bottom:8px;color:#4A5568}
 .empty-state p{font-size:13px;line-height:1.7}
+.mtd-label{display:inline-block;background:#FF5000;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
 .qtd-label{display:inline-block;background:#FF5000;color:white;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
 .loading-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,53,.75);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px}
 .loading-overlay.show{display:flex}
@@ -190,6 +191,7 @@ svg{display:block;width:100%}
 <div class="tab-bar">
   <div class="tab active" onclick="showTab('summary',this)">YTD Summary</div>
   <div class="tab" onclick="showTab('qtd',this)">QTD Summary</div>
+  <div class="tab" onclick="showTab('mtd',this)">MTD Summary</div>
   <div class="tab" onclick="showTab('pcsm',this)">By PCSM</div>
   <div class="tab" onclick="showTab('coach',this)">By Coach</div>
   <div class="tab" onclick="showTab('kicker',this)">Recommendation Kickers</div>
@@ -321,6 +323,53 @@ svg{display:block;width:100%}
   </div>
 </div>
 
+<!-- ============ MTD SUMMARY ============ -->
+<div class="pane" id="pane-mtd">
+  <div class="selector-row">
+    <label>Month</label>
+    <select id="mtdMonthSel" onchange="setMTDMonth(this.value)"></select>
+  </div>
+  <div class="kpi-row-6">
+    <div class="kpi hero"><div class="kpi-val white" id="m-recD">--</div><div class="kpi-lbl kl">Dollars Recommended <span class="mtd-label" id="m-lbl1">MTD</span></div><div class="kpi-sub" id="m-recD-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val" id="m-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded <span class="mtd-label" id="m-lbl2">MTD</span></div><div class="kpi-sub" id="m-upD-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="m-winPct">--</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub" id="m-winPct-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val green" id="m-capture">--</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks" id="m-capture-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val navy" id="m-openD">--</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks" id="m-openD-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val muted" id="m-deadD">--</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks" id="m-deadD-sub">&nbsp;</div></div>
+  </div>
+  <div class="reconcile" id="m-reconcile"></div>
+  <div class="grid">
+    <div class="panel full">
+      <div class="panel-title">PCSM Scorecard <span class="mtd-label">MTD</span></div>
+      <div class="panel-sub">Recommendations made in the month on the left, upgrades that landed in the month on the right.</div>
+      <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
+      <svg id="m1"></svg>
+    </div>
+    <div class="panel full">
+      <div class="panel-title">Coach Scorecard <span class="mtd-label">MTD</span></div>
+      <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
+      <svg id="m2"></svg>
+    </div>
+    <div class="panel full">
+      <div class="panel-title">Status Mix <span class="mtd-label">MTD</span></div>
+      <svg id="m3" height="190"></svg>
+      <div class="caption" id="m3-cap"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Dollars Recommended by Cohort <span class="mtd-label">MTD</span></div>
+      <svg id="m4"></svg>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Dollars Upgraded by Cohort <span class="mtd-label">MTD</span></div>
+      <svg id="m5"></svg>
+    </div>
+    <div class="panel full">
+      <div class="panel-title">Account Detail <span class="mtd-label">MTD</span></div>
+      <div class="table-wrap" id="m-accounts"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ============ BY PCSM ============ -->
 <div class="pane" id="pane-pcsm">
   <div class="selector-row">
@@ -431,6 +480,15 @@ function scopeYTD(rows){
     rec:rows.filter(r=>recYear(r)===YEAR),
     up:rows.filter(r=>isUpgraded(r)&&upYear(r)===YEAR),
     label:String(YEAR)
+  };
+}
+function recM(r){return g(r,'Month Recommended');}
+function upM(r){return g(r,'Month Upgraded');}
+function scopeMonth(rows,m){
+  return{
+    rec:rows.filter(r=>recM(r)===m),
+    up:rows.filter(r=>isUpgraded(r)&&upM(r)===m),
+    label:m
   };
 }
 function scopeQuarter(rows,q){
@@ -782,6 +840,56 @@ function renderQTD(){
     DATA.filter(r=>recQ(r)===q||(isUpgraded(r)&&upQ(r)===q)));
 }
 
+/* ---------------- MTD Summary ----------------
+   Same definitions as the QTD tab, scoped to a single month. Recommendations key
+   off Month Recommended, upgrades off Month Upgraded, so the reconciliation
+   identity still holds within the month. */
+let selectedMTD=null;
+
+function monthKey(m){
+  const parts=String(m||'').split(' ');
+  const i=MONTH_ABBR.indexOf(parts[0]);
+  return (parts[1]||'')+String(i<0?99:i+1).padStart(2,'0');
+}
+function populateMTDDropdown(){
+  const sel=document.getElementById('mtdMonthSel');if(!sel)return;
+  const ms=[...new Set(DATA.flatMap(r=>[recM(r),upM(r)]).filter(Boolean))]
+    .sort((a,b)=>monthKey(a).localeCompare(monthKey(b)));
+  if(!selectedMTD||!ms.includes(selectedMTD))selectedMTD=ms.length?ms[ms.length-1]:null;
+  sel.innerHTML='';
+  ms.forEach(m=>{const o=new Option(m,m);if(m===selectedMTD)o.selected=true;sel.add(o);});
+}
+function setMTDMonth(m){selectedMTD=m;renderMTD();}
+
+function renderMTD(){
+  if(!selectedMTD)populateMTDDropdown();
+  const m=selectedMTD,sc=scopeMonth(DATA,m);
+  document.querySelectorAll('.mtd-label').forEach(e=>e.textContent=m||'MTD');
+  const rD=sc.rec.reduce((a,r)=>a+recD(r),0),uD=sc.up.reduce((a,r)=>a+upD(r),0);
+  const c=cohortStats(sc.rec);
+  document.getElementById('m-recD').textContent=fmtD(rD);
+  document.getElementById('m-upD').textContent=fmtD(uD);
+  document.getElementById('m-winPct').textContent=c.recN?c.winRate.toFixed(1)+'%':'--';
+  document.getElementById('m-capture').textContent=c.upRecD>0?Math.round(c.capture)+'%':'--';
+  document.getElementById('m-openD').textContent=fmtD(c.openD);
+  document.getElementById('m-deadD').textContent=fmtD(c.deadD);
+  document.getElementById('m-recD-sub').textContent=sc.rec.length.toLocaleString()+' recommendations';
+  document.getElementById('m-upD-sub').textContent=sc.up.length.toLocaleString()+' upgrades';
+  document.getElementById('m-winPct-sub').textContent=c.upN+' of '+c.recN+' recommendations upgraded';
+  document.getElementById('m-capture-sub').textContent=fmtD(c.upIncD)+' landed on '+fmtD(c.upRecD)+' recommended';
+  document.getElementById('m-openD-sub').textContent=c.openN+' not yet resolved';
+  document.getElementById('m-deadD-sub').textContent=c.deadN+' closed without an upgrade';
+  document.getElementById('m-reconcile').innerHTML=reconcileLine(c,'in '+m);
+  drawButterfly('m1',aggBy(sc,'PCSM'),20);
+  drawButterfly('m2',aggBy(sc,'Coach'),20);
+  drawStatusBar('m3',aggStatus(sc.rec),'m3-cap');
+  const coh=aggBy(sc,'Cohort or Escalation Type');
+  drawHBar('m4',sortBy(coh,'recD'),'name','recD',NAVY,10);
+  drawHBar('m5',sortBy(coh,'upD').filter(o=>o.upD>0),'name','upD',ORANGE,10);
+  document.getElementById('m-accounts').innerHTML=accountTable(
+    DATA.filter(r=>recM(r)===m||(isUpgraded(r)&&upM(r)===m)));
+}
+
 /* Each drill-down keeps its own quarter so a coach review does not silently
    reuse whatever quarter was last picked on the QTD Summary tab. The selector
    only appears in QTD mode, since it means nothing in YTD. */
@@ -922,61 +1030,85 @@ function toggleKicker(i){
 function renderKicker(){
   const cont=document.getElementById('kicker-content');if(!cont)return;
   if(!DATA.length){cont.innerHTML='<div class="empty-state"><h3>No data loaded</h3></div>';return;}
-  const inPeriod = kickerPeriod==='qtd'
-    ? (r=>recQ(r)===kickerQuarter)
-    : (r=>recYear(r)===YEAR);
+  /* Two separate credits, each on its own clock.
+
+     Recommendation credit is permanent. It is earned the moment the PCSM submits
+     and is never taken back, so a record that later moves to No Longer Counts
+     still counts here. It lands in the period of Date Recommended.
+
+     Upgrade credit lands in the period of Date Upgrade Happened, not the period
+     the recommendation was made. A Q2 recommendation that upgrades in Q3 gives
+     the recommendation credit to Q2 and the upgrade credit to Q3. This is why the
+     two columns below do not have to describe the same set of records, and it is
+     what makes the upgrade totals here agree with the By Coach tab. */
+  const recIn = kickerPeriod==='qtd' ? (r=>recQ(r)===kickerQuarter) : (r=>recYear(r)===YEAR);
+  const upIn  = kickerPeriod==='qtd'
+    ? (r=>isUpgraded(r)&&upQ(r)===kickerQuarter)
+    : (r=>isUpgraded(r)&&upYear(r)===YEAR);
   const periodLbl = kickerPeriod==='qtd' ? (kickerQuarter||'--') : String(YEAR)+' YTD';
-  /* The kicker pays on the recommendation itself, so a recommendation that lands
-     in No Longer Counts stops qualifying. It is excluded from the ranking and the
-     detail, and reported separately so the drop is visible rather than silent.
-     Upgraded dollars stay on a cohort basis: money that landed on the
-     recommendations made in this period, not money that happened to land in it. */
-  const inScope=DATA.filter(inPeriod);
-  const rows=inScope.filter(r=>g(r,'Status')!=='No Longer Counts');
-  const dropped=inScope.filter(r=>g(r,'Status')==='No Longer Counts');
-  const droppedD=dropped.reduce((a,r)=>a+recD(r),0);
+
+  const recRows=DATA.filter(recIn);
+  const upRows=DATA.filter(upIn);
 
   const byP={};
-  rows.forEach(r=>{
-    const p=(g(r,'PCSM')||'Unassigned');
-    if(!byP[p])byP[p]={name:p,coaches:{},recs:[],recN:0,recD:0,upN:0,upD:0};
-    const o=byP[p];
+  const touch=p=>{if(!byP[p])byP[p]={name:p,coaches:{},recs:[],extra:[],recN:0,recD:0,upN:0,upD:0};return byP[p];};
+  recRows.forEach(r=>{
+    const o=touch(g(r,'PCSM')||'Unassigned');
     o.recs.push(r);o.recN++;o.recD+=recD(r);
     const co=g(r,'Coach')||'--';o.coaches[co]=(o.coaches[co]||0)+1;
-    if(isUpgraded(r)){o.upN++;o.upD+=upD(r);}
   });
+  upRows.forEach(r=>{
+    const o=touch(g(r,'PCSM')||'Unassigned');
+    o.upN++;o.upD+=upD(r);
+    const co=g(r,'Coach')||'--';o.coaches[co]=(o.coaches[co]||0)+1;
+    /* Upgraded this period but recommended in an earlier one, so it is not
+       already in the recommendation list. Keep it visible in the detail. */
+    if(!recIn(r))o.extra.push(r);
+  });
+  const rows=recRows;
+  const carryOver=upRows.filter(r=>!recIn(r));
   const list=Object.values(byP).map(o=>{
     o.coach=Object.entries(o.coaches).sort((a,b)=>b[1]-a[1])[0][0];
-    o.recs.sort((a,b)=>String(g(b,'Date Recommended')).localeCompare(String(g(a,'Date Recommended'))));
+    o.detail=o.recs.concat(o.extra)
+      .sort((a,b)=>String(g(b,'Date Recommended')).localeCompare(String(g(a,'Date Recommended'))));
     return o;
-  }).sort((a,b)=>b.recN-a.recN||b.recD-a.recD||a.name.localeCompare(b.name));
+  }).sort((a,b)=>b.recN-a.recN||b.recD-a.recD||b.upD-a.upD||a.name.localeCompare(b.name));
 
   const totalRecs=list.reduce((s,o)=>s+o.recN,0);
   const totalD=list.reduce((s,o)=>s+o.recD,0);
+  const totalUpN=list.reduce((s,o)=>s+o.upN,0);
+  const totalUpD=list.reduce((s,o)=>s+o.upD,0);
   const active=list.length;
   const top=list[0];
 
   const trows=list.map((o,i)=>{
-    const det=o.recs.map(r=>'<tr>'+
+    const det=o.detail.map(r=>{
+      const gotRec=recIn(r), gotUp=upIn(r);
+      const credit=gotRec&&gotUp?'Rec + Upgrade':gotRec?'Recommendation':'Upgrade only';
+      return'<tr>'+
       '<td>'+esc(g(r,'Account Name')||g(r,'Task Name'))+'</td>'+
       '<td>'+esc(g(r,'Cohort or Escalation Type')||'--')+'</td>'+
       '<td>'+esc(g(r,'Date Recommended')||'--')+'</td>'+
       '<td class="num">'+(recD(r)?fmtD(recD(r)):'--')+'</td>'+
+      '<td>'+esc(g(r,'Date Upgrade Happened')||'--')+'</td>'+
+      '<td class="num">'+(upD(r)?fmtD(upD(r)):'--')+'</td>'+
       '<td>'+statusBadge(g(r,'Status'))+'</td>'+
-    '</tr>').join('');
+      '<td style="color:#718096;font-size:11px">'+credit+'</td>'+
+    '</tr>';}).join('');
     return '<tr class="krow" onclick="toggleKicker('+i+')">'+
         '<td><strong>'+(i+1)+'</strong></td>'+
         '<td><span class="kcaret" id="kc-'+i+'">▶</span> <strong style="color:#0F1735">'+esc(o.name)+'</strong></td>'+
         '<td style="color:#718096">'+esc(o.coach)+'</td>'+
         '<td class="num"><span class="badge badge-open">'+o.recN+'</span></td>'+
         '<td class="num">'+fmtD(o.recD)+'</td>'+
-        '<td class="num">'+o.upN+'</td>'+
+        '<td class="num">'+o.upN+(o.extra.length?' <span style="color:#A0AEC0;font-size:10px">('+o.extra.length+' carried)</span>':'')+'</td>'+
         '<td class="num">'+(o.upD?fmtD(o.upD):'--')+'</td>'+
         '<td style="text-align:center"><span class="pending">Pending</span></td>'+
       '</tr>'+
-      '<tr class="kdetail" id="kd-'+i+'"><td colspan="8"><div class="kdetail-inner">'+
+      '<tr class="kdetail" id="kd-'+i+'"><td colspan="9"><div class="kdetail-inner">'+
         '<table><thead><tr><th>Account Name</th><th>Thryv Leads Cohort or Escalation Type</th>'+
-        '<th>Date Recommended</th><th class="num">Dollar Amount Recommended</th><th>Status</th></tr></thead>'+
+        '<th>Date Recommended</th><th class="num">$ Recommended</th>'+
+        '<th>Date Upgraded</th><th class="num">$ Increased</th><th>Status</th><th>Credited As</th></tr></thead>'+
         '<tbody>'+det+'</tbody></table></div></td></tr>';
   }).join('');
 
@@ -988,21 +1120,18 @@ function renderKicker(){
     pill(active,'PCSMs With Activity','Submitted at least one')+
     pill(fmtD(totalD),'Dollars Recommended',esc(periodLbl),'navy')+
     pill(active?(totalRecs/active).toFixed(1):'--','Avg per PCSM',top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'','navy')+
-    pill(dropped.length.toLocaleString(),'Excluded, No Longer Counts',fmtD(droppedD)+' not qualifying')+
+    pill(totalUpN.toLocaleString(),'Upgrades Credited',fmtD(totalUpD)+' increased'+(carryOver.length?' · '+carryOver.length+' carried in':''))+
     pill('&mdash;','Total Kicker Payout','Awaiting payout tiers','pending')+
     '</div>'+
     '<div class="grid" style="grid-template-columns:1fr">'+
       '<div class="panel full">'+
         '<div class="panel-title">Recommendation Kicker Tracker &mdash; '+esc(periodLbl)+'</div>'+
-        '<div class="panel-sub">All '+active+' PCSMs with qualifying activity in the period, ranked by number of recommendations submitted. '+
-          'Click any row to open the account level detail behind that count. '+
-          'Recommendations that moved to No Longer Counts are excluded, '+dropped.length+' in this period. '+
-          '<strong>$ Increased on These Recs</strong> is money that landed on these recommendations, which is not the same as money that landed during this period. '+
-          'The By Coach tab counts upgrades by the date they happened, so its total will be higher wherever an earlier recommendation upgraded later. '+
+        '<div class="panel-sub">'+active+' PCSMs with activity in the period, ranked by recommendations submitted. Click any row to open the account level detail.<br>'+
+          '<strong>Recommendations</strong> are credited in the period they were submitted and are never removed, including any that later moved to No Longer Counts. <strong>Upgrades</strong> are credited in the period the upgrade happened, so a recommendation made earlier that upgraded in this period is counted here and marked as carried. The two columns therefore describe overlapping but different sets of records, and upgrade totals agree with the By Coach tab.'+
           'The payout column stays blank until the tiers are defined.</div>'+
         '<div class="table-wrap tall"><table class="log-table"><thead><tr>'+
           '<th>#</th><th>PCSM</th><th>Coach</th><th class="num">Recommendations</th>'+
-          '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased on These Recs</th>'+
+          '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased</th>'+
           '<th style="text-align:center">Kicker Payout</th>'+
         '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
       '</div>'+
@@ -1088,6 +1217,7 @@ function showTab(id,el){
   document.getElementById('pane-'+id).classList.add('active');
   el.classList.add('active');
   if(id==='qtd')renderQTD();
+  if(id==='mtd')renderMTD();
   if(id==='summary')renderSummary();
   if(id==='pcsm')renderPCSM();
   if(id==='coach')renderCoach();
@@ -1112,6 +1242,7 @@ function renderAll(){
   fillSelect('fStatus',STATUS_ORDER.filter(s=>DATA.some(r=>g(r,'Status')===s)),'All Statuses');
   fillSelect('fQuarter',[...new Set(DATA.map(recQ).filter(Boolean))].sort(),'All Quarters (Recommended)');
   populateQTDDropdown();
+  populateMTDDropdown();
   populateKickerQuarters();
   renderSummary();
 }
@@ -1146,7 +1277,7 @@ window.addEventListener('resize',()=>{
   const active=document.querySelector('.pane.active');
   if(!active)return;
   const id=active.id.replace('pane-','');
-  if(id==='summary')renderSummary();else if(id==='qtd')renderQTD();
+  if(id==='summary')renderSummary();else if(id==='qtd')renderQTD();else if(id==='mtd')renderMTD();
   else if(id==='pcsm')renderPCSM();else if(id==='coach')renderCoach();
 });
 

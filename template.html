@@ -137,6 +137,8 @@ svg{display:block;width:100%}
 .kdetail th.num,.kdetail td.num{text-align:right;font-variant-numeric:tabular-nums}
 .pending{display:inline-block;background:#FFFBEB;color:#8A6A00;border:1px solid #EBD79A;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700;letter-spacing:.3px}
 .reconcile{padding:10px 36px 0;font-size:11px;color:#718096;line-height:1.6}
+.caveat{margin:10px 36px 0;padding:10px 16px;background:#FFFBEB;border:1px solid #EBD79A;border-radius:8px;font-size:11px;color:#8A6A00;line-height:1.6}
+.caveat strong{color:#6B5200}
 .reconcile strong{color:#0F1735}
 .note-box{background:#F5F7FA;border:1px solid #E2E8F0;border-radius:8px;padding:14px 18px;font-size:12px;color:#4A5568;line-height:1.8}
 .note-box strong{color:#0F1735}
@@ -554,6 +556,40 @@ function cohortStats(rows){
   o.balances=Math.abs((o.upRecD+o.openD+o.deadD)-o.recD)<0.01;
   return o;
 }
+/* How long a recommendation usually takes to convert, measured from the data
+   rather than assumed. Used to tell an honest zero from a premature one: a month
+   is shorter than the typical conversion time, so the current month's win rate
+   is near zero by arithmetic, not by performance. */
+function daysBetween(a,b){const x=new Date(a),y=new Date(b);return Math.round((y-x)/86400000);}
+function medianConversionLag(){
+  if(medianConversionLag._v!=null)return medianConversionLag._v;
+  const lags=DATA.filter(r=>isUpgraded(r)&&g(r,'Date Recommended')&&g(r,'Date Upgrade Happened'))
+    .map(r=>daysBetween(g(r,'Date Recommended'),g(r,'Date Upgrade Happened')))
+    .filter(v=>v>=0).sort((a,b)=>a-b);
+  medianConversionLag._v=lags.length?lags[Math.floor(lags.length/2)]:null;
+  return medianConversionLag._v;
+}
+function maturity(rows){
+  const lag=medianConversionLag();
+  const today=new Date().toISOString().slice(0,10);
+  /* A future dated Date Recommended means age zero, not excluded. Dropping those
+     rows would make the caveat's denominator disagree with the win rate's. */
+  const ages=rows.map(r=>g(r,'Date Recommended')?Math.max(0,daysBetween(g(r,'Date Recommended'),today)):null)
+    .filter(v=>v!=null).sort((a,b)=>a-b);
+  if(!ages.length||lag==null)return null;
+  const medianAge=ages[Math.floor(ages.length/2)];
+  const matured=ages.filter(v=>v>=lag).length;
+  return{n:ages.length,medianAge,matured,lag,share:matured/ages.length};
+}
+function maturityCaveat(m,periodLbl,upN){
+  if(!m||m.share>=0.5)return'';
+  return'<div class="caveat"><strong>Too early to read the win rate for '+esc(periodLbl)+'.</strong> '+
+    'Recommendations here have a median age of '+m.medianAge+' days, and the typical recommendation takes '+
+    m.lag+' days to upgrade. Only '+m.matured+' of '+m.n+' have reached that age, so a low win rate reflects '+
+    'the calendar rather than performance. The Dollars Upgraded tile counts upgrades that landed in this period, '+
+    'including ones recommended earlier, which is why it can show value while the win rate shows '+
+    (upN===0?'zero':'little')+'.</div>';
+}
 function reconcileLine(c,periodLbl){
   if(!c.recN)return'';
   return'<strong>'+fmtD(c.recD)+'</strong> recommended '+esc(periodLbl)+' resolves to '+
@@ -875,11 +911,12 @@ function renderMTD(){
   document.getElementById('m-deadD').textContent=fmtD(c.deadD);
   document.getElementById('m-recD-sub').textContent=sc.rec.length.toLocaleString()+' recommendations';
   document.getElementById('m-upD-sub').textContent=sc.up.length.toLocaleString()+' upgrades';
-  document.getElementById('m-winPct-sub').textContent=c.upN+' of '+c.recN+' recommendations upgraded';
+  const mat=maturity(sc.rec);
+  document.getElementById('m-winPct-sub').textContent=c.upN+' of '+c.recN+' upgraded'+(mat?' · median age '+mat.medianAge+'d':'');
   document.getElementById('m-capture-sub').textContent=fmtD(c.upIncD)+' landed on '+fmtD(c.upRecD)+' recommended';
   document.getElementById('m-openD-sub').textContent=c.openN+' not yet resolved';
   document.getElementById('m-deadD-sub').textContent=c.deadN+' closed without an upgrade';
-  document.getElementById('m-reconcile').innerHTML=reconcileLine(c,'in '+m);
+  document.getElementById('m-reconcile').innerHTML=reconcileLine(c,'in '+m)+maturityCaveat(mat,m,c.upN);
   drawButterfly('m1',aggBy(sc,'PCSM'),20);
   drawButterfly('m2',aggBy(sc,'Coach'),20);
   drawStatusBar('m3',aggStatus(sc.rec),'m3-cap');

@@ -8,8 +8,8 @@ Output: data.xlsx with a single 'Raw Data' sheet, ready for build.py.
 Pulls three sections of the Budget Increase Recommendations project, paginating
 through all results. Timestamps are converted to US Central time.
 
-PCSM comes from the 'Submitted By' custom field. Coach is always the task assignee.
-If Submitted By is empty the PCSM column is left blank rather than guessed, so the
+Optimizer comes from the 'Submitted By' custom field. Coach is always the task assignee.
+If Submitted By is empty the Optimizer column is left blank rather than guessed, so the
 gap shows up on the dashboard and can be fixed in Asana.
 """
 import os, sys, time, json, urllib.request, urllib.parse
@@ -44,7 +44,7 @@ OPT_FIELDS = ("name,assignee.name,created_at,due_on,modified_at,completed_at,com
 
 CENTRAL = ZoneInfo("America/Chicago")
 
-HEADERS = ["Task ID", "Section", "Status", "Task Name", "Account Name", "PCSM", "Coach",
+HEADERS = ["Task ID", "Section", "Status", "Task Name", "Account Name", "Optimizer", "Coach",
            "Cohort or Escalation Type", "Other Product Recommended",
            "Date Recommended", "Month Recommended", "Quarter Recommended",
            "Date Upgrade Happened", "Month Upgraded", "Quarter Upgraded",
@@ -119,8 +119,8 @@ def to_num(v):
 
 
 def account_from_task_name(name):
-    """Task names follow 'PCSM Name, Account Name'. Used only as an account fallback
-    when the Business Name field is empty. PCSM never comes from the task name."""
+    """Task names follow 'Optimizer Name, Account Name'. Used only as an account fallback
+    when the Business Name field is empty. Optimizer never comes from the task name."""
     if not name:
         return ""
     return name.split(",", 1)[1].strip() if "," in name else name.strip()
@@ -138,8 +138,8 @@ def row_for(t, section_name):
 
     task_name = t.get("name", "") or ""
 
-    # PCSM is the Submitted By field only. Left blank if the field is empty.
-    pcsm = (cf.get("Submitted By") or "").strip()
+    # Optimizer is the Submitted By field only. Left blank if the field is empty.
+    optimizer = (cf.get("Submitted By") or "").strip()
     account = (cf.get("Business Name") or "").strip() or account_from_task_name(task_name)
     coach = (t.get("assignee") or {}).get("name", "") if t.get("assignee") else ""
 
@@ -152,7 +152,7 @@ def row_for(t, section_name):
         STATUS_MAP.get(section, section),
         task_name,
         account,
-        pcsm,
+        optimizer,
         coach,
         cf.get("Thryv Leads Cohort or Escalation Type", ""),
         cf.get("Other Product Recommended", ""),
@@ -196,11 +196,11 @@ def main():
     wb.save("data.xlsx")
     print(f"data.xlsx written: {len(rows)} rows")
 
-    pcsm_i, coach_i = HEADERS.index("PCSM"), HEADERS.index("Coach")
-    no_pcsm = sum(1 for r in rows if not r[pcsm_i])
+    optimizer_i, coach_i = HEADERS.index("Optimizer"), HEADERS.index("Coach")
+    no_optimizer = sum(1 for r in rows if not r[optimizer_i])
     no_coach = sum(1 for r in rows if not r[coach_i])
-    if no_pcsm:
-        print(f"  WARNING: {no_pcsm} task(s) have no Submitted By value")
+    if no_optimizer:
+        print(f"  WARNING: {no_optimizer} task(s) have no Submitted By value")
     if no_coach:
         print(f"  WARNING: {no_coach} task(s) have no assignee")
 

@@ -194,7 +194,7 @@ svg{display:block;width:100%}
   <div class="tab active" onclick="showTab('summary',this)">YTD Summary</div>
   <div class="tab" onclick="showTab('qtd',this)">QTD Summary</div>
   <div class="tab" onclick="showTab('mtd',this)">MTD Summary</div>
-  <div class="tab" onclick="showTab('pcsm',this)">By PCSM</div>
+  <div class="tab" onclick="showTab('optimizer',this)">By Optimizer</div>
   <div class="tab" onclick="showTab('coach',this)">By Coach</div>
   <div class="tab" onclick="showTab('kicker',this)">Recommendation Kickers</div>
   <div class="tab" onclick="showTab('log',this)">Raw Data</div>
@@ -225,8 +225,8 @@ svg{display:block;width:100%}
     </div>
 
     <div class="panel full">
-      <div class="panel-title">PCSM Scorecard &mdash; Recommendations Made vs. Upgrades Landed</div>
-      <div class="panel-sub">Left side is what the PCSM recommended. Right side is what actually upgraded. Percentage is dollars captured.</div>
+      <div class="panel-title">Optimizer Scorecard &mdash; Recommendations Made vs. Upgrades Landed</div>
+      <div class="panel-sub">Left side is what the Optimizer recommended. Right side is what actually upgraded. Percentage is dollars captured.</div>
       <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
       <svg id="c2"></svg>
     </div>
@@ -296,7 +296,7 @@ svg{display:block;width:100%}
       </div>
     </div>
     <div class="panel full">
-      <div class="panel-title">PCSM Scorecard <span class="qtd-label" id="q-lbl6">QTD</span></div>
+      <div class="panel-title">Optimizer Scorecard <span class="qtd-label" id="q-lbl6">QTD</span></div>
       <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
       <svg id="q2"></svg>
     </div>
@@ -342,7 +342,7 @@ svg{display:block;width:100%}
   <div class="reconcile" id="m-reconcile"></div>
   <div class="grid">
     <div class="panel full">
-      <div class="panel-title">PCSM Scorecard <span class="mtd-label">MTD</span></div>
+      <div class="panel-title">Optimizer Scorecard <span class="mtd-label">MTD</span></div>
       <div class="panel-sub">Recommendations made in the month on the left, upgrades that landed in the month on the right.</div>
       <div class="split-hdr"><span class="left">&#9664; Recommended</span><span class="right">Upgraded &#9654;</span></div>
       <svg id="m1"></svg>
@@ -372,20 +372,20 @@ svg{display:block;width:100%}
   </div>
 </div>
 
-<!-- ============ BY PCSM ============ -->
-<div class="pane" id="pane-pcsm">
+<!-- ============ BY Optimizer ============ -->
+<div class="pane" id="pane-optimizer">
   <div class="selector-row">
-    <label>PCSM</label>
-    <select id="pcsmSel" onchange="renderPCSM()"><option value="">-- Select PCSM --</option></select>
+    <label>Optimizer</label>
+    <select id="optimizerSel" onchange="renderOptimizer()"><option value="">-- Select Optimizer --</option></select>
     <label>Period</label>
     <div class="period-toggle">
-      <button class="period-btn active" id="pPeriodYTD" onclick="setPcsmPeriod('ytd')">YTD</button>
-      <button class="period-btn" id="pPeriodQTD" onclick="setPcsmPeriod('qtd')">QTD</button>
+      <button class="period-btn active" id="pPeriodYTD" onclick="setOptimizerPeriod('ytd')">YTD</button>
+      <button class="period-btn" id="pPeriodQTD" onclick="setOptimizerPeriod('qtd')">QTD</button>
     </div>
     <label id="pQtrLabel" style="display:none">Quarter</label>
-    <select id="pQuarterSel" style="display:none" onchange="setPcsmQuarter(this.value)"></select>
+    <select id="pQuarterSel" style="display:none" onchange="setOptimizerQuarter(this.value)"></select>
   </div>
-  <div id="pcsm-content"><div class="empty-state"><h3>Select a PCSM above</h3><p>Choose a PCSM to see recommendations made, upgrades landed, and the account level detail behind both.</p></div></div>
+  <div id="optimizer-content"><div class="empty-state"><h3>Select a Optimizer above</h3><p>Choose a Optimizer to see recommendations made, upgrades landed, and the account level detail behind both.</p></div></div>
 </div>
 
 <!-- ============ BY COACH ============ -->
@@ -401,7 +401,7 @@ svg{display:block;width:100%}
     <label id="cQtrLabel" style="display:none">Quarter</label>
     <select id="cQuarterSel" style="display:none" onchange="setCoachQuarter(this.value)"></select>
   </div>
-  <div id="coach-content"><div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the PCSMs behind it.</p></div></div>
+  <div id="coach-content"><div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the Optimizers behind it.</p></div></div>
 </div>
 
 <!-- ============ KICKER (placeholder) ============ -->
@@ -422,7 +422,7 @@ svg{display:block;width:100%}
 <div class="pane" id="pane-log">
   <div class="selector-row">
     <select id="fCoach" onchange="renderLog()"><option value="">All Coaches</option></select>
-    <select id="fPcsm" onchange="renderLog()"><option value="">All PCSMs</option></select>
+    <select id="fOptimizer" onchange="renderLog()"><option value="">All Optimizers</option></select>
     <select id="fStatus" onchange="renderLog()"><option value="">All Statuses</option></select>
     <select id="fQuarter" onchange="renderLog()"><option value="">All Quarters (Recommended)</option></select>
     <button class="btn-ghost" onclick="clearFilters()">Clear</button>
@@ -451,7 +451,7 @@ let DATA_TS='@@TIMESTAMP@@';
 const YEAR=new Date().getFullYear();
 function currentQuarter(){const d=new Date();return'Q'+Math.ceil((d.getMonth()+1)/3)+' '+d.getFullYear();}
 let selectedQTD=currentQuarter();
-let pcsmPeriod='ytd',coachPeriod='ytd';
+let optimizerPeriod='ytd',coachPeriod='ytd';
 
 /* ---------------- small helpers ---------------- */
 function num(v){const n=Number(String(v==null?'':v).replace(/[$,]/g,''));return isFinite(n)?n:0;}
@@ -752,7 +752,7 @@ function accountTable(rows,opts){
   const sorted=[...rows].sort((a,b)=>
     String(g(b,'Date Recommended')).localeCompare(String(g(a,'Date Recommended')))||
     (recD(b)-recD(a)));
-  const showPcsm=opts.showPcsm!==false,showCoach=opts.showCoach!==false;
+  const showOptimizer=opts.showOptimizer!==false,showCoach=opts.showCoach!==false;
   let totRec=0,totUp=0;
   const body=sorted.map(r=>{
     totRec+=recD(r);totUp+=upD(r);
@@ -761,7 +761,7 @@ function accountTable(rows,opts){
     return'<tr>'+
       '<td>'+esc(g(r,'Date Recommended')||'--')+'</td>'+
       '<td>'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener" style="color:#0F1735;text-decoration:none;border-bottom:1px dotted #CBD5E0">'+acct+'</a>':acct)+'</td>'+
-      (showPcsm?'<td>'+esc(g(r,'PCSM'))+'</td>':'')+
+      (showOptimizer?'<td>'+esc(g(r,'Optimizer'))+'</td>':'')+
       (showCoach?'<td>'+esc(g(r,'Coach'))+'</td>':'')+
       '<td>'+esc(g(r,'Cohort or Escalation Type'))+'</td>'+
       '<td class="num">'+(recD(r)?fmtD(recD(r)):'--')+'</td>'+
@@ -771,11 +771,11 @@ function accountTable(rows,opts){
     '</tr>';
   }).join('');
   /* Columns ahead of the $ Recommended total: Recommended, Account, Cohort,
-     plus PCSM and Coach when shown. Keep this in step with the header or the
+     plus Optimizer and Coach when shown. Keep this in step with the header or the
      totals row drifts sideways. */
-  const span=3+(showPcsm?1:0)+(showCoach?1:0);
+  const span=3+(showOptimizer?1:0)+(showCoach?1:0);
   return'<table class="log-table"><thead><tr>'+
-    '<th>Recommended</th><th>Account</th>'+(showPcsm?'<th>PCSM</th>':'')+(showCoach?'<th>Coach</th>':'')+
+    '<th>Recommended</th><th>Account</th>'+(showOptimizer?'<th>Optimizer</th>':'')+(showCoach?'<th>Coach</th>':'')+
     '<th>Cohort / Escalation</th><th class="num">$ Recommended</th><th>Status</th><th>Upgraded</th><th class="num">$ Increased</th>'+
     '</tr></thead><tbody>'+body+'</tbody>'+
     '<tfoot><tr><td colspan="'+span+'">'+sorted.length.toLocaleString()+' accounts</td>'+
@@ -826,7 +826,7 @@ function renderSummary(){
     ? excluded.toLocaleString()+' of '+DATA.length.toLocaleString()+' tracked records fall outside '+YEAR+' or have no date on the relevant field, so they are not on this chart. All records appear on the Raw Data tab.'
     : '';
 
-  drawButterfly('c2',aggBy(sc,'PCSM'),20);
+  drawButterfly('c2',aggBy(sc,'Optimizer'),20);
   drawButterfly('c3',aggBy(sc,'Coach'),20);
   drawStatusBar('c4',aggStatus(DATA),'c4-cap');
   const coh=aggBy(sc,'Cohort or Escalation Type');
@@ -866,7 +866,7 @@ function renderQTD(){
   document.getElementById('q-deadD-sub').textContent=c.deadN+' closed without an upgrade';
   document.getElementById('q-reconcile').innerHTML=reconcileLine(c,'in '+q);
   drawDualMonthly('q1',aggMonthly(sc,false));
-  drawButterfly('q2',aggBy(sc,'PCSM'),20);
+  drawButterfly('q2',aggBy(sc,'Optimizer'),20);
   drawButterfly('q3',aggBy(sc,'Coach'),20);
   drawStatusBar('q4',aggStatus(sc.rec),'q4-cap');
   const qcoh=aggBy(sc,'Cohort or Escalation Type');
@@ -917,7 +917,7 @@ function renderMTD(){
   document.getElementById('m-openD-sub').textContent=c.openN+' not yet resolved';
   document.getElementById('m-deadD-sub').textContent=c.deadN+' closed without an upgrade';
   document.getElementById('m-reconcile').innerHTML=reconcileLine(c,'in '+m)+maturityCaveat(mat,m,c.upN);
-  drawButterfly('m1',aggBy(sc,'PCSM'),20);
+  drawButterfly('m1',aggBy(sc,'Optimizer'),20);
   drawButterfly('m2',aggBy(sc,'Coach'),20);
   drawStatusBar('m3',aggStatus(sc.rec),'m3-cap');
   const coh=aggBy(sc,'Cohort or Escalation Type');
@@ -930,7 +930,7 @@ function renderMTD(){
 /* Each drill-down keeps its own quarter so a coach review does not silently
    reuse whatever quarter was last picked on the QTD Summary tab. The selector
    only appears in QTD mode, since it means nothing in YTD. */
-let pcsmQuarter=null, coachQuarter=null;
+let optimizerQuarter=null, coachQuarter=null;
 
 function allQuarters(){
   return[...new Set(DATA.map(recQ).filter(Boolean))]
@@ -949,13 +949,13 @@ function showQuarterPicker(tag,show){
   if(sel)sel.style.display=show?'':'none';
   if(lbl)lbl.style.display=show?'':'none';
 }
-function setPcsmPeriod(p){
-  pcsmPeriod=p;
+function setOptimizerPeriod(p){
+  optimizerPeriod=p;
   document.getElementById('pPeriodYTD').classList.toggle('active',p==='ytd');
   document.getElementById('pPeriodQTD').classList.toggle('active',p==='qtd');
-  if(p==='qtd')pcsmQuarter=fillQuarterSelect('pQuarterSel',pcsmQuarter);
+  if(p==='qtd')optimizerQuarter=fillQuarterSelect('pQuarterSel',optimizerQuarter);
   showQuarterPicker('p',p==='qtd');
-  renderPCSM();
+  renderOptimizer();
 }
 function setCoachPeriod(p){
   coachPeriod=p;
@@ -965,7 +965,7 @@ function setCoachPeriod(p){
   showQuarterPicker('c',p==='qtd');
   renderCoach();
 }
-function setPcsmQuarter(q){pcsmQuarter=q;renderPCSM();}
+function setOptimizerQuarter(q){optimizerQuarter=q;renderOptimizer();}
 function setCoachQuarter(q){coachQuarter=q;renderCoach();}
 
 function personPane(who,key,period,otherLabel,quarter){
@@ -974,7 +974,7 @@ function personPane(who,key,period,otherLabel,quarter){
   const rD=sc.rec.reduce((a,r)=>a+recD(r),0),uD=sc.up.reduce((a,r)=>a+upD(r),0);
   const rN=sc.rec.length,uN=sc.up.length;
   const periodLbl=period==='qtd'?(quarter||'--'):String(YEAR)+' YTD';
-  const uid=key==='PCSM'?'p':'c';
+  const uid=key==='Optimizer'?'p':'c';
   const c=cohortStats(sc.rec);
   return'<div class="kpi-row-6">'+
     '<div class="kpi hero"><div class="kpi-val white">'+fmtD(rD)+'</div><div class="kpi-lbl kl">Dollars Recommended</div><div class="kpi-sub">'+rN+' recommendations · '+esc(periodLbl)+'</div></div>'+
@@ -996,34 +996,34 @@ function personPane(who,key,period,otherLabel,quarter){
     '<div data-payload="1"></div>';
 }
 
-function renderPCSM(){
-  const who=document.getElementById('pcsmSel').value;
-  const box=document.getElementById('pcsm-content');
-  if(!who){box.innerHTML='<div class="empty-state"><h3>Select a PCSM above</h3><p>Choose a PCSM to see recommendations made, upgrades landed, and the account level detail behind both.</p></div>';return;}
-  box.innerHTML=personPane(who,'PCSM',pcsmPeriod,'Coach',pcsmQuarter);
-  const rows=DATA.filter(r=>g(r,'PCSM')===who);
-  const sc=pcsmPeriod==='qtd'?scopeQuarter(rows,pcsmQuarter):scopeYTD(rows);
-  drawDualMonthly('pm1',aggMonthly(sc,pcsmPeriod!=='qtd'));
+function renderOptimizer(){
+  const who=document.getElementById('optimizerSel').value;
+  const box=document.getElementById('optimizer-content');
+  if(!who){box.innerHTML='<div class="empty-state"><h3>Select a Optimizer above</h3><p>Choose a Optimizer to see recommendations made, upgrades landed, and the account level detail behind both.</p></div>';return;}
+  box.innerHTML=personPane(who,'Optimizer',optimizerPeriod,'Coach',optimizerQuarter);
+  const rows=DATA.filter(r=>g(r,'Optimizer')===who);
+  const sc=optimizerPeriod==='qtd'?scopeQuarter(rows,optimizerQuarter):scopeYTD(rows);
+  drawDualMonthly('pm1',aggMonthly(sc,optimizerPeriod!=='qtd'));
   drawStatusBar('pm2',aggStatus(sc.rec));
   drawButterfly('pm3',aggBy(sc,'Cohort or Escalation Type'),10,{wideNames:true});
   document.getElementById('pm4').innerHTML=scorecardTable(aggBy(sc,'Coach'),'Coach');
-  const scoped=pcsmPeriod==='qtd'
-    ? rows.filter(r=>recQ(r)===pcsmQuarter||(isUpgraded(r)&&upQ(r)===pcsmQuarter))
+  const scoped=optimizerPeriod==='qtd'
+    ? rows.filter(r=>recQ(r)===optimizerQuarter||(isUpgraded(r)&&upQ(r)===optimizerQuarter))
     : rows.filter(r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
-  document.getElementById('pm5').innerHTML=accountTable(scoped,{showPcsm:false});
+  document.getElementById('pm5').innerHTML=accountTable(scoped,{showOptimizer:false});
 }
 
 function renderCoach(){
   const who=document.getElementById('coachSel').value;
   const box=document.getElementById('coach-content');
-  if(!who){box.innerHTML='<div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the PCSMs behind it.</p></div>';return;}
-  box.innerHTML=personPane(who,'Coach',coachPeriod,'PCSM',coachQuarter);
+  if(!who){box.innerHTML='<div class="empty-state"><h3>Select a coach above</h3><p>Choose a coach to see their book of recommendations and the Optimizers behind it.</p></div>';return;}
+  box.innerHTML=personPane(who,'Coach',coachPeriod,'Optimizer',coachQuarter);
   const rows=DATA.filter(r=>g(r,'Coach')===who);
   const sc=coachPeriod==='qtd'?scopeQuarter(rows,coachQuarter):scopeYTD(rows);
   drawDualMonthly('cm1',aggMonthly(sc,coachPeriod!=='qtd'));
   drawStatusBar('cm2',aggStatus(sc.rec));
   drawButterfly('cm3',aggBy(sc,'Cohort or Escalation Type'),10,{wideNames:true});
-  document.getElementById('cm4').innerHTML=scorecardTable(aggBy(sc,'PCSM'),'PCSM');
+  document.getElementById('cm4').innerHTML=scorecardTable(aggBy(sc,'Optimizer'),'Optimizer');
   const scoped=coachPeriod==='qtd'
     ? rows.filter(r=>recQ(r)===coachQuarter||(isUpgraded(r)&&upQ(r)===coachQuarter))
     : rows.filter(r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
@@ -1032,7 +1032,7 @@ function renderCoach(){
 
 /* ---------------- Recommendation Kickers ----------------
    Ranked by volume of recommendations, highest first, matching the SaaS Growth
-   kicker tracker layout. Each PCSM row expands to the account level detail:
+   kicker tracker layout. Each Optimizer row expands to the account level detail:
    account name, cohort or escalation type, date recommended, dollar amount.
 
    The payout column is intentionally not calculated yet. The qualifying rule
@@ -1069,7 +1069,7 @@ function renderKicker(){
   if(!DATA.length){cont.innerHTML='<div class="empty-state"><h3>No data loaded</h3></div>';return;}
   /* Two separate credits, each on its own clock.
 
-     Recommendation credit is permanent. It is earned the moment the PCSM submits
+     Recommendation credit is permanent. It is earned the moment the Optimizer submits
      and is never taken back, so a record that later moves to No Longer Counts
      still counts here. It lands in the period of Date Recommended.
 
@@ -1090,12 +1090,12 @@ function renderKicker(){
   const byP={};
   const touch=p=>{if(!byP[p])byP[p]={name:p,coaches:{},recs:[],extra:[],recN:0,recD:0,upN:0,upD:0};return byP[p];};
   recRows.forEach(r=>{
-    const o=touch(g(r,'PCSM')||'Unassigned');
+    const o=touch(g(r,'Optimizer')||'Unassigned');
     o.recs.push(r);o.recN++;o.recD+=recD(r);
     const co=g(r,'Coach')||'--';o.coaches[co]=(o.coaches[co]||0)+1;
   });
   upRows.forEach(r=>{
-    const o=touch(g(r,'PCSM')||'Unassigned');
+    const o=touch(g(r,'Optimizer')||'Unassigned');
     o.upN++;o.upD+=upD(r);
     const co=g(r,'Coach')||'--';o.coaches[co]=(o.coaches[co]||0)+1;
     /* Upgraded this period but recommended in an earlier one, so it is not
@@ -1154,20 +1154,20 @@ function renderKicker(){
     '<div class="pill-lbl">'+lbl+'</div>'+(sub?'<div class="pill-sub">'+sub+'</div>':'')+'</div></div>';
   cont.innerHTML='<div class="pill-row">'+
     pill(totalRecs.toLocaleString(),'Total Recommendations',esc(periodLbl),'dark')+
-    pill(active,'PCSMs With Activity','Submitted at least one')+
+    pill(active,'Optimizers With Activity','Submitted at least one')+
     pill(fmtD(totalD),'Dollars Recommended',esc(periodLbl),'navy')+
-    pill(active?(totalRecs/active).toFixed(1):'--','Avg per PCSM',top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'','navy')+
+    pill(active?(totalRecs/active).toFixed(1):'--','Avg per Optimizer',top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'','navy')+
     pill(totalUpN.toLocaleString(),'Upgrades Credited',fmtD(totalUpD)+' increased'+(carryOver.length?' · '+carryOver.length+' carried in':''))+
     pill('&mdash;','Total Kicker Payout','Awaiting payout tiers','pending')+
     '</div>'+
     '<div class="grid" style="grid-template-columns:1fr">'+
       '<div class="panel full">'+
         '<div class="panel-title">Recommendation Kicker Tracker &mdash; '+esc(periodLbl)+'</div>'+
-        '<div class="panel-sub">'+active+' PCSMs with activity in the period, ranked by recommendations submitted. Click any row to open the account level detail.<br>'+
+        '<div class="panel-sub">'+active+' Optimizers with activity in the period, ranked by recommendations submitted. Click any row to open the account level detail.<br>'+
           '<strong>Recommendations</strong> are credited in the period they were submitted and are never removed, including any that later moved to No Longer Counts. <strong>Upgrades</strong> are credited in the period the upgrade happened, so a recommendation made earlier that upgraded in this period is counted here and marked as carried. The two columns therefore describe overlapping but different sets of records, and upgrade totals agree with the By Coach tab.'+
           'The payout column stays blank until the tiers are defined.</div>'+
         '<div class="table-wrap tall"><table class="log-table"><thead><tr>'+
-          '<th>#</th><th>PCSM</th><th>Coach</th><th class="num">Recommendations</th>'+
+          '<th>#</th><th>Optimizer</th><th>Coach</th><th class="num">Recommendations</th>'+
           '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased</th>'+
           '<th style="text-align:center">Kicker Payout</th>'+
         '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
@@ -1184,12 +1184,12 @@ function fillSelect(id,vals,allLabel){
   if(cur)sel.value=cur;
 }
 function filteredRows(){
-  const c=document.getElementById('fCoach').value,p=document.getElementById('fPcsm').value,
+  const c=document.getElementById('fCoach').value,p=document.getElementById('fOptimizer').value,
         st=document.getElementById('fStatus').value,q=document.getElementById('fQuarter').value;
-  return DATA.filter(r=>(!c||g(r,'Coach')===c)&&(!p||g(r,'PCSM')===p)&&(!st||g(r,'Status')===st)&&(!q||recQ(r)===q));
+  return DATA.filter(r=>(!c||g(r,'Coach')===c)&&(!p||g(r,'Optimizer')===p)&&(!st||g(r,'Status')===st)&&(!q||recQ(r)===q));
 }
 function dataQualityLine(){
-  const noP=DATA.filter(r=>!g(r,'PCSM')).length,noC=DATA.filter(r=>!g(r,'Coach')).length;
+  const noP=DATA.filter(r=>!g(r,'Optimizer')).length,noC=DATA.filter(r=>!g(r,'Coach')).length;
   const noRec=DATA.filter(r=>!g(r,'Date Recommended')).length;
   const noAmt=DATA.filter(r=>!recD(r)).length;
   const upNoAmt=DATA.filter(r=>isUpgraded(r)&&!upD(r)).length;
@@ -1199,10 +1199,10 @@ function dataQualityLine(){
   if(noRec)bits.push(noRec+' with no Date Recommended');
   if(noAmt)bits.push(noAmt+' with no Dollar Amount Recommended');
   if(upNoAmt)bits.push(upNoAmt+' upgraded with no Dollar Amount Increased');
-  if(!bits.length)return'<strong>Field completeness:</strong> every record has a PCSM, coach, recommendation date, and recommended amount.<br>';
+  if(!bits.length)return'<strong>Field completeness:</strong> every record has a Optimizer, coach, recommendation date, and recommended amount.<br>';
   return'<strong>Field completeness:</strong> '+bits.join(', ')+'. These records still count in the totals but fall out of the affected breakdowns.<br>';
 }
-function clearFilters(){['fCoach','fPcsm','fStatus','fQuarter'].forEach(id=>document.getElementById(id).value='');renderLog();}
+function clearFilters(){['fCoach','fOptimizer','fStatus','fQuarter'].forEach(id=>document.getElementById(id).value='');renderLog();}
 function renderLog(){
   const rows=filteredRows();
   document.getElementById('logCount').textContent='('+rows.length.toLocaleString()+' of '+DATA.length.toLocaleString()+' records)';
@@ -1212,7 +1212,7 @@ function renderLog(){
     '<div class="note-box"><strong>Source:</strong> Asana project <em>Budget Increase Recommendations</em>. '+
     'Three sections are pulled: Reviewed - No Upgrade Yet, Reviewed - Upgraded 2026, and No Longer Counts 2026.<br>'+
     '<strong>Refresh:</strong> automated export twice daily at 12:00 AM and 12:00 PM Central.<br>'+
-    '<strong>PCSM:</strong> the Submitted By field. <strong>Coach:</strong> the Asana assignee.<br>'+
+    '<strong>Optimizer:</strong> the Submitted By field. <strong>Coach:</strong> the Asana assignee.<br>'+
     dataQualityLine()+
     '<strong>Upgrade win rate:</strong> upgraded records divided by all records recommended in the period, including No Longer Counts. '+
     '<strong>Capture when upgraded:</strong> Dollar Amount Increased divided by Dollar Amount Recommended, counting only the records that upgraded. '+
@@ -1225,7 +1225,7 @@ function renderLog(){
 }
 /* Fixed column order so an export dropped into Excel always looks the same,
    regardless of which optional fields happen to be filled in. */
-const COLUMNS=['Task ID','Section','Status','Account Name','PCSM','Coach',
+const COLUMNS=['Task ID','Section','Status','Account Name','Optimizer','Coach',
   'Cohort or Escalation Type','Other Product Recommended',
   'Date Recommended','Month Recommended','Quarter Recommended',
   'Date Upgrade Happened','Month Upgraded','Quarter Upgraded',
@@ -1256,7 +1256,7 @@ function showTab(id,el){
   if(id==='qtd')renderQTD();
   if(id==='mtd')renderMTD();
   if(id==='summary')renderSummary();
-  if(id==='pcsm')renderPCSM();
+  if(id==='optimizer')renderOptimizer();
   if(id==='coach')renderCoach();
   if(id==='kicker')renderKicker();
   if(id==='log')renderLog();
@@ -1272,10 +1272,10 @@ function renderAll(){
     'Budget increase recommendations logged in Asana, tracked from recommendation through upgrade. '+
     DATA.length.toLocaleString()+' records across Reviewed - No Upgrade Yet, Reviewed - Upgraded 2026, and No Longer Counts 2026. '+
     'Refreshed twice daily at 12:00 AM and 12:00 PM Central.';
-  fillSelect('pcsmSel',uniqVals('PCSM'),'-- Select PCSM --');
+  fillSelect('optimizerSel',uniqVals('Optimizer'),'-- Select Optimizer --');
   fillSelect('coachSel',uniqVals('Coach'),'-- Select Coach --');
   fillSelect('fCoach',uniqVals('Coach'),'All Coaches');
-  fillSelect('fPcsm',uniqVals('PCSM'),'All PCSMs');
+  fillSelect('fOptimizer',uniqVals('Optimizer'),'All Optimizers');
   fillSelect('fStatus',STATUS_ORDER.filter(s=>DATA.some(r=>g(r,'Status')===s)),'All Statuses');
   fillSelect('fQuarter',[...new Set(DATA.map(recQ).filter(Boolean))].sort(),'All Quarters (Recommended)');
   populateQTDDropdown();
@@ -1315,7 +1315,7 @@ window.addEventListener('resize',()=>{
   if(!active)return;
   const id=active.id.replace('pane-','');
   if(id==='summary')renderSummary();else if(id==='qtd')renderQTD();else if(id==='mtd')renderMTD();
-  else if(id==='pcsm')renderPCSM();else if(id==='coach')renderCoach();
+  else if(id==='optimizer')renderOptimizer();else if(id==='coach')renderCoach();
 });
 
 (function init(){

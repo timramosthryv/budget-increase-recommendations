@@ -101,6 +101,14 @@ whether 29 against a requirement of 30 pays nothing.
 An increase dated before its own recommendation is treated as a data error and excluded,
 not as a fast conversion.
 
+*Quarterly requirement.* Held in `KICKER_REQUIREMENT` near the top of the script in
+`template.html`. 30 for PCSM and Senior PCSM roles, 5 for Escalation Associates and
+Reactive Optimization Specialists. Keys use Asana's `Submitted By` spelling, which differs
+from the roster in two places: the roster says Elias Ellison and Edgar Acosta, Asana records
+Eli Ellison and Edgar Acost. **Anyone missing from that table reports as "not set" and pays
+nothing** rather than defaulting to a number, because guessing a requirement decides whether
+a person gets paid. Update this table when the roster changes.
+
 *Records impacting the period.* Recommendations plus increases minus the ones counted in
 both. This is the figure the manual tracker's monthly column represents. For June 2026 the
 export gave 134 + 22 - 6 = 150, and the manual sheet 151, the difference being one record
@@ -111,6 +119,24 @@ Open and No Longer Counts. These take every record recommended in the period reg
 amount or status and show how that cohort resolved. No Longer Counts sits in the Cohort
 Upgrade Rate denominator by design, which is why the tiles will not add up to the goal
 figures.
+
+### Recommendation Kickers tab
+
+Ranks Optimizers by qualifying recommendations and calculates the payout. The Goal column
+shows recommendations against the requirement, green when met. The Kicker column shows what
+is earned. Where the goal was missed, the eligible increases still show but the money reads
+as held rather than earned, and the "Held by the Goal Gate" pill totals it for the period.
+
+Opening a row shows the account detail. Each increase is marked either as paying $50 or as
+not paying, with the reason: the day count when it fell outside the 90-day window, or
+"upgrade predates rec" when the dates are the wrong way round, which is a data error rather
+than a fast conversion.
+
+Two figures to know when reading it. Applied to closed quarters, the gate would have held
+$700 in Q1 2026 and $500 in Q2 2026. Both quarters were in fact paid un-gated, and the
+un-gated totals match the manual tracker to the dollar, $1,600 and $2,650. So the written
+rule and the practice do not currently agree, and that is a decision for the business rather
+than something the dashboard should assume.
 
 ### Date boundaries
 

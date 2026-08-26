@@ -136,6 +136,10 @@ svg{display:block;width:100%}
 .kdetail td{font-size:12px;color:#4A5568;padding:6px 12px;border-bottom:1px solid #EDF2F7}
 .kdetail th.num,.kdetail td.num{text-align:right;font-variant-numeric:tabular-nums}
 .pending{display:inline-block;background:#FFFBEB;color:#8A6A00;border:1px solid #EBD79A;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.gmet{display:inline-block;background:#E6F4EC;color:#1E6B49;border:1px solid #A9D9BF;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700}
+.gmiss{display:inline-block;background:#FDECEE;color:#A32B39;border:1px solid #F0B7BF;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700}
+.gnone{display:inline-block;background:#EDF2F7;color:#718096;border:1px solid #D9E1EA;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700}
+.khold{color:#A32B39;font-size:10px}
 .reconcile{padding:10px 36px 0;font-size:11px;color:#718096;line-height:1.6}
 .caveat{margin:10px 36px 0;padding:10px 16px;background:#FFFBEB;border:1px solid #EBD79A;border-radius:8px;font-size:11px;color:#8A6A00;line-height:1.6}
 .caveat strong{color:#6B5200}
@@ -514,6 +518,24 @@ function upM(r){return g(r,'Month Upgraded');}
    no longer counts. Different question, different denominator. Do not add the
    two together. */
 const KICKER_PER_UPGRADE=50, MIN_REC_AMOUNT=100, KICKER_MAX_DAYS=90;
+/* Quarterly recommendation requirement, supplied 2026-08-26. Keys are spelled the
+   way Asana's 'Submitted By' field spells them, which differs from the roster in
+   two places: the roster says Elias Ellison and Edgar Acosta, Asana records Eli
+   Ellison and Edgar Acost. Anyone absent here reports as "not set" rather than
+   defaulting to a number, because guessing a requirement decides whether someone
+   gets paid. */
+const KICKER_REQUIREMENT={
+  'Cindy Austin':30,'DaJuana Owens':30,'Don Nimrichter':30,'Edgar Acost':30,
+  'Eli Ellison':30,'Ely Alcantara Reyes':30,'Jean Rivera Tejeda':30,
+  'Johanna Diaz Ramirez':30,'Keila Revell':30,'Nicole Marcelino Puello':30,
+  'Niurkiss Mallen Burgos':30,'Emily Ortiz Acevedo':30,
+  'Emmanuel Lora Diaz':5,'Gabriel Paulino Helena':5,'Josue Astacio Tejeda':5,
+  'Karla Dominguez Gerbacio':5,'Leonardo Frias Medina':5,'Luis Ozuna Mercedes':5,
+  'Onesis Rosario Olea':5,'Sherly Ortiz Brea':5,'Amelia Cuesta Grullon':5,
+  'Jhonnny Andujar Soriano':5,'Jorge Martinez Suriel':5,
+  'Michael Mercedes Montero Mieses':5
+};
+function requirementFor(n){const v=KICKER_REQUIREMENT[n];return v==null?null:v;}
 function qualifies(r){return recD(r)>=MIN_REC_AMOUNT;}
 function daysToUpgrade(r){
   const a=g(r,'Date Recommended'),b=g(r,'Date Upgrade Happened');
@@ -1150,17 +1172,21 @@ function renderKicker(){
      the recommendation credit to Q2 and the upgrade credit to Q3. This is why the
      two columns below do not have to describe the same set of records, and it is
      what makes the upgrade totals here agree with the By Coach tab. */
-  const recIn = kickerPeriod==='qtd' ? (r=>recQ(r)===kickerQuarter) : (r=>recYear(r)===YEAR);
+  const recIn = kickerPeriod==='qtd'
+    ? (r=>recQ(r)===kickerQuarter&&qualifies(r))
+    : (r=>recYear(r)===YEAR&&qualifies(r));
   const upIn  = kickerPeriod==='qtd'
     ? (r=>isUpgraded(r)&&upQ(r)===kickerQuarter)
     : (r=>isUpgraded(r)&&upYear(r)===YEAR);
+  /* An increase pays only inside the 90-day window from its own recommendation. */
+  const eligIn = r=>upIn(r)&&kickerEligible(r);
   const periodLbl = kickerPeriod==='qtd' ? (kickerQuarter||'--') : String(YEAR)+' YTD';
 
   const recRows=DATA.filter(recIn);
   const upRows=DATA.filter(upIn);
 
   const byP={};
-  const touch=p=>{if(!byP[p])byP[p]={name:p,coaches:{},recs:[],extra:[],recN:0,recD:0,upN:0,upD:0};return byP[p];};
+  const touch=p=>{if(!byP[p])byP[p]={name:p,coaches:{},recs:[],extra:[],recN:0,recD:0,upN:0,upD:0,eligN:0};return byP[p];};
   recRows.forEach(r=>{
     const o=touch(g(r,'Optimizer')||'Unassigned');
     o.recs.push(r);o.recN++;o.recD+=recD(r);
@@ -1169,6 +1195,7 @@ function renderKicker(){
   upRows.forEach(r=>{
     const o=touch(g(r,'Optimizer')||'Unassigned');
     o.upN++;o.upD+=upD(r);
+    if(kickerEligible(r))o.eligN++;
     const co=g(r,'Coach')||'--';o.coaches[co]=(o.coaches[co]||0)+1;
     /* Upgraded this period but recommended in an earlier one, so it is not
        already in the recommendation list. Keep it visible in the detail. */
@@ -1178,6 +1205,11 @@ function renderKicker(){
   const carryOver=upRows.filter(r=>!recIn(r));
   const list=Object.values(byP).map(o=>{
     o.coach=Object.entries(o.coaches).sort((a,b)=>b[1]-a[1])[0][0];
+    o.req=requirementFor(o.name);
+    o.met=o.req!=null&&o.recN>=o.req;
+    o.earned=o.met?o.eligN*KICKER_PER_UPGRADE:0;
+    o.ungated=o.eligN*KICKER_PER_UPGRADE;
+    o.held=o.ungated-o.earned;
     o.detail=o.recs.concat(o.extra)
       .sort((a,b)=>String(g(b,'Date Recommended')).localeCompare(String(g(a,'Date Recommended'))));
     return o;
@@ -1187,13 +1219,22 @@ function renderKicker(){
   const totalD=list.reduce((s,o)=>s+o.recD,0);
   const totalUpN=list.reduce((s,o)=>s+o.upN,0);
   const totalUpD=list.reduce((s,o)=>s+o.upD,0);
+  const totalElig=list.reduce((s,o)=>s+o.eligN,0);
+  const totalEarned=list.reduce((s,o)=>s+o.earned,0);
+  const totalUngated=list.reduce((s,o)=>s+o.ungated,0);
+  const metCount=list.filter(o=>o.met).length;
+  const rated=list.filter(o=>o.req!=null).length;
+  const noReq=list.filter(o=>o.req==null&&(o.recN||o.eligN));
   const active=list.length;
   const top=list[0];
 
   const trows=list.map((o,i)=>{
     const det=o.detail.map(r=>{
       const gotRec=recIn(r), gotUp=upIn(r);
-      const credit=gotRec&&gotUp?'Rec + Upgrade':gotRec?'Recommendation':'Upgrade only';
+      let credit=gotRec&&gotUp?'Rec + Upgrade':gotRec?'Recommendation':'Upgrade only';
+      if(gotUp){const lg=daysToUpgrade(r);
+        credit+=kickerEligible(r)?' &middot; pays $'+KICKER_PER_UPGRADE
+          :' &middot; <span class="khold">no kicker, '+(lg==null?'no dates':lg<0?'upgrade predates rec':lg+' days')+'</span>';}
       return'<tr>'+
       '<td>'+esc(g(r,'Account Name')||g(r,'Task Name'))+'</td>'+
       '<td>'+esc(g(r,'Cohort or Escalation Type')||'--')+'</td>'+
@@ -1212,7 +1253,12 @@ function renderKicker(){
         '<td class="num">'+fmtD(o.recD)+'</td>'+
         '<td class="num">'+o.upN+(o.extra.length?' <span style="color:#A0AEC0;font-size:10px">('+o.extra.length+' carried)</span>':'')+'</td>'+
         '<td class="num">'+(o.upD?fmtD(o.upD):'--')+'</td>'+
-        '<td style="text-align:center"><span class="pending">Pending</span></td>'+
+        '<td style="text-align:center">'+(o.req==null
+            ? '<span class="gnone">not set</span>'
+            : '<span class="'+(o.met?'gmet':'gmiss')+'">'+o.recN+' of '+o.req+'</span>')+'</td>'+
+        '<td class="num">'+(o.req==null?'<span style="color:#A0AEC0">--</span>'
+            : o.earned?'<strong>'+fmtD(o.earned)+'</strong>'
+            : (o.held?'<span class="khold">'+fmtD(0)+' &middot; '+fmtD(o.held)+' held</span>':fmtD(0)))+'</td>'+
       '</tr>'+
       '<tr class="kdetail" id="kd-'+i+'"><td colspan="9"><div class="kdetail-inner">'+
         '<table><thead><tr><th>Account Name</th><th>Thryv Leads Cohort or Escalation Type</th>'+
@@ -1230,18 +1276,20 @@ function renderKicker(){
     pill(fmtD(totalD),'Dollars Recommended',esc(periodLbl),'navy')+
     pill(active?(totalRecs/active).toFixed(1):'--','Avg per Optimizer',top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'','navy')+
     pill(totalUpN.toLocaleString(),'Upgrades Credited',fmtD(totalUpD)+' increased'+(carryOver.length?' · '+carryOver.length+' carried in':''))+
-    pill('&mdash;','Total Kicker Payout','Awaiting payout tiers','pending')+
+    pill(fmtD(totalEarned),'Kicker Payout',metCount+' of '+rated+' met the goal &middot; '+totalElig+' eligible increases','dark')+
+    pill(fmtD(totalUngated-totalEarned),'Held by the Goal Gate',totalUngated-totalEarned?'Would pay '+fmtD(totalUngated)+' with no gate':'Nothing held back','pending')+
     '</div>'+
     '<div class="grid" style="grid-template-columns:1fr">'+
       '<div class="panel full">'+
         '<div class="panel-title">Recommendation Kicker Tracker &mdash; '+esc(periodLbl)+'</div>'+
         '<div class="panel-sub">'+active+' Optimizers with activity in the period, ranked by recommendations submitted. Click any row to open the account level detail.<br>'+
           '<strong>Recommendations</strong> are credited in the period they were submitted and are never removed, including any that later moved to No Longer Counts. <strong>Upgrades</strong> are credited in the period the upgrade happened, so a recommendation made earlier that upgraded in this period is counted here and marked as carried. The two columns therefore describe overlapping but different sets of records, and upgrade totals agree with the By Coach tab.'+
-          'The payout column stays blank until the tiers are defined.</div>'+
+          '<br><strong>Kicker</strong> is $'+KICKER_PER_UPGRADE+' per increase landing within '+KICKER_MAX_DAYS+' days of its own recommendation, and only recommendations of '+fmtD(MIN_REC_AMOUNT)+' or more count toward the goal. Nothing pays until the quarterly requirement is met, so a red Goal badge means the eligible increases beside it are held rather than earned.'+
+          (noReq.length?' <span class="khold">'+noReq.length+' Optimizer'+(noReq.length>1?'s have':' has')+' activity but no requirement on the roster, shown as not set: '+noReq.map(o=>esc(o.name)).join(', ')+'.</span>':'')+'</div>'+
         '<div class="table-wrap tall"><table class="log-table"><thead><tr>'+
           '<th>#</th><th>Optimizer</th><th>Coach</th><th class="num">Recommendations</th>'+
           '<th class="num">$ Recommended</th><th class="num">Upgrades</th><th class="num">$ Increased</th>'+
-          '<th style="text-align:center">Kicker Payout</th>'+
+          '<th style="text-align:center">Goal</th><th class="num">Kicker</th>'+
         '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
       '</div>'+
     '</div>';

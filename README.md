@@ -124,8 +124,10 @@ figures.
 
 Ranks Optimizers by qualifying recommendations and calculates the payout. The Goal column
 shows recommendations against the requirement, green when met. The Kicker column shows what
-is earned. Where the goal was missed, the eligible increases still show but the money reads
-as held rather than earned, and the "Held by the Goal Gate" pill totals it for the period.
+is earned. Where the goal was missed the row reads `$0`, with the eligible increases still
+visible in the Upgrades column beside it. Someone with no requirement on the roster reads
+`--` rather than `$0`, so an unrated person is never confused with someone who earned
+nothing.
 
 Opening a row shows the account detail. Each increase is marked either as paying $50 or as
 not paying, with the reason: the day count when it fell outside the 90-day window, or
@@ -137,6 +139,21 @@ $700 in Q1 2026 and $500 in Q2 2026. Both quarters were in fact paid un-gated, a
 un-gated totals match the manual tracker to the dollar, $1,600 and $2,650. So the written
 rule and the practice do not currently agree, and that is a decision for the business rather
 than something the dashboard should assume.
+
+### Optimizers who have left
+
+`FORMER_OPTIMIZERS` in `template.html` maps a name to the first day they were no longer in
+the role. They drop out of any period **starting on or after** that date and keep every
+period they actually worked, so history is not rewritten. On the YTD view the period starts
+1 January, so someone who worked part of the year still appears there.
+
+Currently: `Danilo Acosta` from `2026-07-01`. His last recommendation was 2026-06-30, so he
+keeps Q1 and Q2 in full and drops out of Q3 onward. Adjust the date if HR has a different
+one, and add a line per person as people leave.
+
+Records belonging to a departed Optimizer are not silently dropped. They appear in the
+integrity check as a data quality row naming the person, the account and the end date, so
+the exclusion is auditable.
 
 ### Integrity check
 
@@ -163,6 +180,7 @@ Eight checks, split by whether money moves:
 - Recommendation below the $100 minimum, excluded from the goal count
 - Active Optimizer with no quarterly requirement on the roster, so the goal cannot be
   evaluated and nothing pays
+- Record belonging to a departed Optimizer, excluded from the period
 
 A summary strip shows the count for each check plus the total kicker dollars affected. When
 a period is clean it says so rather than showing an empty table.

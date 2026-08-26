@@ -547,6 +547,23 @@ const KICKER_REQUIREMENT={
 };
 function requirementFor(n){const v=KICKER_REQUIREMENT[n];return v==null?null:v;}
 
+/* Optimizers who have left. The date is the first day they were no longer in the
+   role, so history stays intact: they keep every quarter they actually worked and
+   drop out of any period starting on or after that date. Deleting them outright
+   would rewrite Q1 and Q2, where their recommendations and increases are real.
+   Danilo Acosta's last recommendation was 2026-06-30, so 2026-07-01 keeps all of
+   Q1 and Q2 and removes him from Q3 onward. Adjust if HR has a different date. */
+const FORMER_OPTIMIZERS={'Danilo Acosta':'2026-07-01'};
+function quarterStart(q){
+  const m=/^Q([1-4])\s+(\d{4})$/.exec(String(q||''));
+  if(!m)return null;
+  return m[2]+'-'+String((Number(m[1])-1)*3+1).padStart(2,'0')+'-01';
+}
+function departedBefore(name,periodStart){
+  const d=FORMER_OPTIMIZERS[name];
+  return !!(d&&periodStart&&periodStart>=d);
+}
+
 /* ---------------- integrity check ----------------
    Asana is the system of record. The manual tracker may carry deliberate
    overrides, so the point here is not to match it, it is to prove that what the
@@ -590,7 +607,7 @@ function integrityScan(recRaw,upRows){
   });
   return F;
 }
-function integrityPanel(recRaw,upRows,list,periodLbl){
+function integrityPanel(recRaw,upRows,list,periodLbl,departedRows){
   const F=integrityScan(recRaw,upRows);
   F.noReq=list.filter(o=>o.req==null&&(o.recN||o.eligN));
   const money=r=>KICKER_PER_UPGRADE;
@@ -630,6 +647,15 @@ function integrityPanel(recRaw,upRows,list,periodLbl){
     '<td>'+esc(g(gp[0],'Account Name'))+'</td>'+
     '<td>same EAID and campaign counted for each of them in this period</td>'+
     '<td class="num">--</td></tr>').join('');
+  body+=(departedRows||[]).map(r=>'<tr>'+
+    '<td>Record belongs to a departed Optimizer</td>'+
+    '<td><span class="sev sev-data">data quality</span></td>'+
+    '<td>'+esc(g(r,'Optimizer'))+'</td>'+
+    '<td>'+esc(g(r,'Account Name')||g(r,'Task Name')||'--')+'</td>'+
+    '<td>left '+esc(FORMER_OPTIMIZERS[g(r,'Optimizer')]||'--')+
+      ', excluded from this period. Recommended '+esc(String(g(r,'Date Recommended')).slice(0,10)||'--')+
+      (g(r,'Date Upgrade Happened')?', upgraded '+esc(String(g(r,'Date Upgrade Happened')).slice(0,10)):'')+'</td>'+
+    '<td class="num">--</td></tr>').join('');
   body+=F.noReq.map(o=>'<tr>'+
     '<td>Active with no quarterly requirement on the roster</td>'+
     '<td><span class="sev sev-data">data quality</span></td>'+
@@ -642,7 +668,8 @@ function integrityPanel(recRaw,upRows,list,periodLbl){
   const dupRisk=F.repeatSame.reduce((a,gp)=>a+(gp.length-1)*KICKER_PER_UPGRADE,0);
   const chip=(n,lbl)=>'<div class="ic-chip'+(n?' hit':'')+'"><strong>'+n+'</strong>'+lbl+'</div>';
   const total=F.late.length+F.reversed.length+F.noDates.length+F.lowRec.length+
-    F.repeatSame.length+F.repeatCross.length+F.noOwner.length+F.noReq.length;
+    F.repeatSame.length+F.repeatCross.length+F.noOwner.length+F.noReq.length+
+    (departedRows||[]).length;
 
   return '<div class="panel full">'+
     '<div class="panel-title">Integrity Check &mdash; '+esc(periodLbl)+'</div>'+
@@ -658,6 +685,7 @@ function integrityPanel(recRaw,upRows,list,periodLbl){
       chip(F.lowRec.length,'under $100')+
       chip(F.noOwner.length,'no Submitted By')+
       chip(F.noReq.length,'no requirement set')+
+      chip((departedRows||[]).length,'departed Optimizer')+
       '<div class="ic-chip'+(held+dupRisk?' hit':'')+'"><strong>'+fmtD(held+dupRisk)+'</strong>kicker affected</div>'+
     '</div>'+
     (total?'<div class="table-wrap"><table class="log-table"><thead><tr>'+
@@ -1302,17 +1330,31 @@ function renderKicker(){
      the recommendation credit to Q2 and the upgrade credit to Q3. This is why the
      two columns below do not have to describe the same set of records, and it is
      what makes the upgrade totals here agree with the By Coach tab. */
+  /* Period start drives the departed-Optimizer cut. On YTD this is 1 January, so
+     anyone who worked part of the year still appears; only a quarter that begins
+     after they left excludes them. */
+  const periodStart = kickerPeriod==='qtd' ? quarterStart(kickerQuarter) : String(YEAR)+'-01-01';
+  const stillHere = r=>!departedBefore(g(r,'Optimizer'),periodStart);
+
   const recIn = kickerPeriod==='qtd'
-    ? (r=>recQ(r)===kickerQuarter&&qualifies(r))
-    : (r=>recYear(r)===YEAR&&qualifies(r));
+    ? (r=>recQ(r)===kickerQuarter&&qualifies(r)&&stillHere(r))
+    : (r=>recYear(r)===YEAR&&qualifies(r)&&stillHere(r));
   const upIn  = kickerPeriod==='qtd'
-    ? (r=>isUpgraded(r)&&upQ(r)===kickerQuarter)
-    : (r=>isUpgraded(r)&&upYear(r)===YEAR);
+    ? (r=>isUpgraded(r)&&upQ(r)===kickerQuarter&&stillHere(r))
+    : (r=>isUpgraded(r)&&upYear(r)===YEAR&&stillHere(r));
   /* An increase pays only inside the 90-day window from its own recommendation. */
   const eligIn = r=>upIn(r)&&kickerEligible(r);
   /* Same period, no dollar filter, so the integrity check can see the records the
      goal count deliberately drops. */
-  const recInRaw = kickerPeriod==='qtd' ? (r=>recQ(r)===kickerQuarter) : (r=>recYear(r)===YEAR);
+  const recInRaw = kickerPeriod==='qtd'
+    ? (r=>recQ(r)===kickerQuarter&&stillHere(r))
+    : (r=>recYear(r)===YEAR&&stillHere(r));
+  /* Kept so the integrity check can report what the cut removed instead of
+     letting records vanish without trace. */
+  const inPeriod = kickerPeriod==='qtd'
+    ? (r=>recQ(r)===kickerQuarter||(isUpgraded(r)&&upQ(r)===kickerQuarter))
+    : (r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
+  const departedRows = DATA.filter(r=>inPeriod(r)&&!stillHere(r));
   const periodLbl = kickerPeriod==='qtd' ? (kickerQuarter||'--') : String(YEAR)+' YTD';
 
   const recRows=DATA.filter(recIn);
@@ -1341,8 +1383,6 @@ function renderKicker(){
     o.req=requirementFor(o.name);
     o.met=o.req!=null&&o.recN>=o.req;
     o.earned=o.met?o.eligN*KICKER_PER_UPGRADE:0;
-    o.ungated=o.eligN*KICKER_PER_UPGRADE;
-    o.held=o.ungated-o.earned;
     o.detail=o.recs.concat(o.extra)
       .sort((a,b)=>String(g(b,'Date Recommended')).localeCompare(String(g(a,'Date Recommended'))));
     return o;
@@ -1354,7 +1394,6 @@ function renderKicker(){
   const totalUpD=list.reduce((s,o)=>s+o.upD,0);
   const totalElig=list.reduce((s,o)=>s+o.eligN,0);
   const totalEarned=list.reduce((s,o)=>s+o.earned,0);
-  const totalUngated=list.reduce((s,o)=>s+o.ungated,0);
   const metCount=list.filter(o=>o.met).length;
   const rated=list.filter(o=>o.req!=null).length;
   const noReq=list.filter(o=>o.req==null&&(o.recN||o.eligN));
@@ -1391,7 +1430,7 @@ function renderKicker(){
             : '<span class="'+(o.met?'gmet':'gmiss')+'">'+o.recN+' of '+o.req+'</span>')+'</td>'+
         '<td class="num">'+(o.req==null?'<span style="color:#A0AEC0">--</span>'
             : o.earned?'<strong>'+fmtD(o.earned)+'</strong>'
-            : (o.held?'<span class="khold">'+fmtD(0)+' &middot; '+fmtD(o.held)+' held</span>':fmtD(0)))+'</td>'+
+            : fmtD(0))+'</td>'+
       '</tr>'+
       '<tr class="kdetail" id="kd-'+i+'"><td colspan="9"><div class="kdetail-inner">'+
         '<table><thead><tr><th>Account Name</th><th>Thryv Leads Cohort or Escalation Type</th>'+
@@ -1410,14 +1449,13 @@ function renderKicker(){
     pill(active?(totalRecs/active).toFixed(1):'--','Avg per Optimizer',top?'Top: '+esc(shortName(top.name))+' with '+top.recN:'','navy')+
     pill(totalUpN.toLocaleString(),'Upgrades Credited',fmtD(totalUpD)+' increased'+(carryOver.length?' · '+carryOver.length+' carried in':''))+
     pill(fmtD(totalEarned),'Kicker Payout',metCount+' of '+rated+' met the goal &middot; '+totalElig+' eligible increases','dark')+
-    pill(fmtD(totalUngated-totalEarned),'Held by the Goal Gate',totalUngated-totalEarned?'Would pay '+fmtD(totalUngated)+' with no gate':'Nothing held back','pending')+
     '</div>'+
     '<div class="grid" style="grid-template-columns:1fr">'+
       '<div class="panel full">'+
         '<div class="panel-title">Recommendation Kicker Tracker &mdash; '+esc(periodLbl)+'</div>'+
         '<div class="panel-sub">'+active+' Optimizers with activity in the period, ranked by recommendations submitted. Click any row to open the account level detail.<br>'+
           '<strong>Recommendations</strong> are credited in the period they were submitted and are never removed, including any that later moved to No Longer Counts. <strong>Upgrades</strong> are credited in the period the upgrade happened, so a recommendation made earlier that upgraded in this period is counted here and marked as carried. The two columns therefore describe overlapping but different sets of records, and upgrade totals agree with the By Coach tab.'+
-          '<br><strong>Kicker</strong> is $'+KICKER_PER_UPGRADE+' per increase landing within '+KICKER_MAX_DAYS+' days of its own recommendation, and only recommendations of '+fmtD(MIN_REC_AMOUNT)+' or more count toward the goal. Nothing pays until the quarterly requirement is met, so a red Goal badge means the eligible increases beside it are held rather than earned.'+
+          '<br><strong>Kicker</strong> is $'+KICKER_PER_UPGRADE+' per increase landing within '+KICKER_MAX_DAYS+' days of its own recommendation, and only recommendations of '+fmtD(MIN_REC_AMOUNT)+' or more count toward the goal. Nothing pays until the quarterly requirement is met, so a red Goal badge means the eligible increases beside it earn nothing.'+
           (noReq.length?' <span class="khold">'+noReq.length+' Optimizer'+(noReq.length>1?'s have':' has')+' activity but no requirement on the roster, shown as not set: '+noReq.map(o=>esc(o.name)).join(', ')+'.</span>':'')+'</div>'+
         '<div class="table-wrap tall"><table class="log-table"><thead><tr>'+
           '<th>#</th><th>Optimizer</th><th>Coach</th><th class="num">Recommendations</th>'+
@@ -1425,7 +1463,7 @@ function renderKicker(){
           '<th style="text-align:center">Goal</th><th class="num">Kicker</th>'+
         '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
       '</div>'+
-      integrityPanel(DATA.filter(recInRaw),upRows,list,periodLbl)+
+      integrityPanel(DATA.filter(recInRaw),upRows,list,periodLbl,departedRows)+
     '</div>';
 }
 

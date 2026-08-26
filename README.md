@@ -82,20 +82,35 @@ These are two different populations and the dashboard reports them separately on
 Adding them together produces a number that means nothing.
 
 **Goal metrics** appear in the blue strip under the KPI tiles on the YTD, QTD, MTD, By
-Optimizer and By Coach views. A record counts toward a period if it was recommended in
-that period **or** increased in that period. Each record counts once, and anything sitting
-in `No Longer Counts 2026` is excluded from both sides. This is the definition the manual
-tracker uses, confirmed against the June 2026 export: 134 recommendations + 23 increases
-minus 6 counted in both equals 151 records impacting June.
+Optimizer and By Coach views, and follow the comp plan rules confirmed 2026-08-26.
 
-Recommendations and increases are separate goals. The recommendation goal is judged on a
-count. The kicker is earned on dollars increased.
+*Recommendation goal.* A recommendation of **$100 or greater** counts toward the period it
+was submitted in, permanently. Records later moved to `No Longer Counts 2026` still count,
+because the 90-day closure voids kicker eligibility only, not the recommendation credit.
+Verified against March 2026: counting them gives 176 against the manual tracker's 183,
+while excluding them gives roughly 85.
+
+*Kicker.* **$50 per increase**, and the increase must land within **90 days** of its own
+recommendation. It is payable only once the quarterly requirement is met, which is 30 for
+PCSM and Senior PCSM roles and 5 for Escalation Associates and Reactive Optimization
+Specialists. Meet the requirement and every eligible increase pays, including ones tied to
+recommendations from an earlier quarter. The dashboard shows eligible increases and the
+dollar figure but does **not** apply the goal gate, because the gate needs a ruling on
+whether 29 against a requirement of 30 pays nothing.
+
+An increase dated before its own recommendation is treated as a data error and excluded,
+not as a fast conversion.
+
+*Records impacting the period.* Recommendations plus increases minus the ones counted in
+both. This is the figure the manual tracker's monthly column represents. For June 2026 the
+export gave 134 + 22 - 6 = 150, and the manual sheet 151, the difference being one record
+the export dropped on a date boundary.
 
 **Cohort analytics** are the KPI tiles: Cohort Upgrade Rate, Cohort Dollar Capture, Still
-Open and No Longer Counts. These take every record recommended in the period, including
-ones later moved to No Longer Counts, and show how that cohort resolved. No Longer Counts
-sits in the Cohort Upgrade Rate denominator by design, which is why the tiles will not add
-up to the goal figure.
+Open and No Longer Counts. These take every record recommended in the period regardless of
+amount or status and show how that cohort resolved. No Longer Counts sits in the Cohort
+Upgrade Rate denominator by design, which is why the tiles will not add up to the goal
+figures.
 
 ### Date boundaries
 
@@ -106,8 +121,8 @@ fall out of its own period. Any hand-built export feeding this process should us
 approach.
 
 
-- **Upgrade win rate** = upgraded records / all records recommended in the period, including No Longer Counts
-- **Capture when upgraded** = Dollar Amount Increased / Dollar Amount Recommended, counting only the records that upgraded
+- **Cohort upgrade rate** = upgraded records / all records recommended in the period, including No Longer Counts. Not goal attainment
+- **Cohort dollar capture** = Dollar Amount Increased / Dollar Amount Recommended, counting only the records that upgraded
 - **Still open** = dollars recommended on records sitting in Reviewed - No Upgrade Yet
 - **No longer counts** = dollars recommended on records closed without an upgrade
 - Recommendation volume and dollars plot to the month of **Date Recommended**

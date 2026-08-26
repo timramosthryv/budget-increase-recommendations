@@ -491,24 +491,43 @@ function upQ(r){return g(r,'Quarter Upgraded');}
 function scopeYTD(rows){
   const rec=rows.filter(r=>recYear(r)===YEAR);
   const up=rows.filter(r=>isUpgraded(r)&&upYear(r)===YEAR);
-  const recGoal=rec.filter(counts);
-  return{rec:rec,up:up,recGoal:recGoal,union:unionRows(recGoal,up),label:String(YEAR)};
+  const recGoal=rec.filter(qualifies);
+  return{rec:rec,up:up,recGoal:recGoal,eligible:up.filter(kickerEligible),union:unionRows(recGoal,up),label:String(YEAR)};
 }
 function recM(r){return g(r,'Month Recommended');}
 function upM(r){return g(r,'Month Upgraded');}
 
 /* ---------------- goal metrics ----------------
-   Two populations, kept apart deliberately.
+   Comp plan rules, confirmed 2026-08-26.
 
-   GOAL: a record counts toward a period if it was recommended in that period or
-   increased in that period. Each record counts once, and records sitting in
-   'No Longer Counts' are excluded from both sides. This is the number the manual
-   tracker reports and the number the recommendation goal is judged on.
+   RECOMMENDATION GOAL: a recommendation of $100 or greater counts toward the
+   period it was submitted in, permanently. Moving to 'No Longer Counts' later
+   does not claw the credit back, because the 90-day closure only voids kicker
+   eligibility. Verified against March 2026: including No Longer Counts gives 176
+   against the tracker's 183, excluding gives about 85.
 
-   COHORT: the KPI tiles keep No Longer Counts in, because a recommendation cohort
-   resolves into upgraded, still open, and no longer counts. That is a different
-   question and a different denominator. Do not add the two together. */
-function counts(r){return g(r,'Status')!=='No Longer Counts';}
+   KICKER: $50 per increase, and the increase must land within 90 days of its
+   recommendation. Paid only once the recommendation goal is met.
+
+   COHORT: the KPI tiles are a separate view. They take every record recommended
+   in the period and show how that cohort resolved into upgraded, still open and
+   no longer counts. Different question, different denominator. Do not add the
+   two together. */
+const KICKER_PER_UPGRADE=50, MIN_REC_AMOUNT=100, KICKER_MAX_DAYS=90;
+function qualifies(r){return recD(r)>=MIN_REC_AMOUNT;}
+function daysToUpgrade(r){
+  const a=g(r,'Date Recommended'),b=g(r,'Date Upgrade Happened');
+  if(!a||!b)return null;
+  return daysBetween(a,b);
+}
+/* An increase earns the kicker only inside the 90-day window. A negative value
+   means the upgrade is dated before its own recommendation, which is a data
+   error rather than a fast conversion, so it is excluded and surfaced. */
+function kickerEligible(r){
+  if(!qualifies(r))return false;
+  const l=daysToUpgrade(r);
+  return l!=null&&l>=0&&l<=KICKER_MAX_DAYS;
+}
 function rowKey(r){
   return g(r,'Task ID')||[g(r,'EAID'),g(r,'Campaign ID'),g(r,'Date Recommended')].join('|');
 }
@@ -519,31 +538,35 @@ function unionRows(a,b){
 }
 function goalStats(sc){
   const recN=sc.recGoal.length,upN=sc.up.length,unionN=sc.union.length;
+  const elig=sc.eligible?sc.eligible.length:0;
   return{recN:recN,upN:upN,bothN:recN+upN-unionN,unionN:unionN,
+         eligN:elig,lateN:upN-elig,kicker:elig*KICKER_PER_UPGRADE,
          upDollars:sc.up.reduce((a,r)=>a+upD(r),0)};
 }
 function goalBar(sc,lbl){
   const s=goalStats(sc);
   if(!s.unionN)return'';
   return'<span class="gb-tag">Goal metrics</span>'+
-    '<strong>'+s.recN+'</strong> recommendations &nbsp;+&nbsp; <strong>'+s.upN+'</strong> increases ('+
-    fmtD(s.upDollars)+') &nbsp;&minus;&nbsp; '+s.bothN+' counted in both &nbsp;=&nbsp; <strong>'+
-    s.unionN+'</strong> records impacting '+esc(lbl)+
-    '<span class="gb-note">Recommendations and increases are separate goals. The impacting total counts each '+
-    'record once and excludes No Longer Counts. The tiles above are cohort analytics on a wider population '+
-    'and will not add up to this figure.</span>';
+    '<strong>'+s.recN+'</strong> recommendations &nbsp;+&nbsp; <strong>'+s.upN+'</strong> increases &nbsp;&minus;&nbsp; '+
+    s.bothN+' counted in both &nbsp;=&nbsp; <strong>'+s.unionN+'</strong> records impacting '+esc(lbl)+
+    '<span class="gb-tag" style="margin-left:14px">Kicker</span><strong>'+s.eligN+'</strong> eligible increases &nbsp;=&nbsp; <strong>'+
+    fmtD(s.kicker)+'</strong>'+(s.lateN?' &nbsp;·&nbsp; '+s.lateN+' outside the 90-day window':'')+
+    '<span class="gb-note">Recommendations of $100 or greater count toward the period they were submitted in, '+
+    'including any later moved to No Longer Counts. Kicker is $50 per increase landing within 90 days of its '+
+    'recommendation, payable only once the quarterly goal is met, which is not applied here. The tiles above '+
+    'are cohort analytics on a wider population and will not add up to these figures.</span>';
 }
 function scopeMonth(rows,m){
   const rec=rows.filter(r=>recM(r)===m);
   const up=rows.filter(r=>isUpgraded(r)&&upM(r)===m);
-  const recGoal=rec.filter(counts);
-  return{rec:rec,up:up,recGoal:recGoal,union:unionRows(recGoal,up),label:m};
+  const recGoal=rec.filter(qualifies);
+  return{rec:rec,up:up,recGoal:recGoal,eligible:up.filter(kickerEligible),union:unionRows(recGoal,up),label:m};
 }
 function scopeQuarter(rows,q){
   const rec=rows.filter(r=>recQ(r)===q);
   const up=rows.filter(r=>isUpgraded(r)&&upQ(r)===q);
-  const recGoal=rec.filter(counts);
-  return{rec:rec,up:up,recGoal:recGoal,union:unionRows(recGoal,up),label:q};
+  const recGoal=rec.filter(qualifies);
+  return{rec:rec,up:up,recGoal:recGoal,eligible:up.filter(kickerEligible),union:unionRows(recGoal,up),label:q};
 }
 
 /* ---------------- svg helpers ---------------- */

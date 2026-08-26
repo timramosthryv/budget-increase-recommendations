@@ -140,6 +140,14 @@ svg{display:block;width:100%}
 .caveat{margin:10px 36px 0;padding:10px 16px;background:#FFFBEB;border:1px solid #EBD79A;border-radius:8px;font-size:11px;color:#8A6A00;line-height:1.6}
 .caveat strong{color:#6B5200}
 .reconcile strong{color:#0F1735}
+/* Goal metrics strip. Kept visually distinct from the KPI tiles above it because
+   it measures a different population: the tiles are cohort analytics that include
+   records moved to No Longer Counts, the strip is the goal count that excludes them. */
+.goalbar{margin:12px 36px 0;padding:12px 18px;background:#F0F5FF;border:1px solid #C9D9F5;border-radius:8px;font-size:12px;color:#2C3E63;line-height:1.7}
+.goalbar:empty{display:none}
+.goalbar strong{color:#0F1735;font-size:14px}
+.gb-tag{display:inline-block;background:#0F1735;color:white;font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin-right:10px;vertical-align:1px}
+.gb-note{display:block;margin-top:5px;font-size:10.5px;color:#7286AD}
 .note-box{background:#F5F7FA;border:1px solid #E2E8F0;border-radius:8px;padding:14px 18px;font-size:12px;color:#4A5568;line-height:1.8}
 .note-box strong{color:#0F1735}
 .split-hdr{display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:6px}
@@ -205,12 +213,13 @@ svg{display:block;width:100%}
   <div class="kpi-row-6">
     <div class="kpi hero"><div class="kpi-val white" id="s-recD">--</div><div class="kpi-lbl kl">Dollars Recommended YTD</div><div class="kpi-sub" id="s-recD-sub">&nbsp;</div></div>
     <div class="kpi hero"><div class="kpi-val" id="s-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded YTD</div><div class="kpi-sub" id="s-upD-sub">&nbsp;</div></div>
-    <div class="kpi hero"><div class="kpi-val green" id="s-winPct">--</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub" id="s-winPct-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="kpi-val green" id="s-capture">--</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks" id="s-capture-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="s-winPct">--</div><div class="kpi-lbl kl">Cohort Upgrade Rate</div><div class="kpi-sub" id="s-winPct-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val green" id="s-capture">--</div><div class="kpi-lbl">Cohort Dollar Capture</div><div class="kpi-sub ks" id="s-capture-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-val navy" id="s-openD">--</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks" id="s-openD-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-val muted" id="s-deadD">--</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks" id="s-deadD-sub">&nbsp;</div></div>
   </div>
   <div class="reconcile" id="s-reconcile"></div>
+  <div class="goalbar" id="s-goal"></div>
   <div class="grid">
     <div class="panel full">
       <div class="panel-title">Monthly Dollars Recommended vs. Dollars Upgraded</div>
@@ -279,12 +288,13 @@ svg{display:block;width:100%}
   <div class="kpi-row-6">
     <div class="kpi hero"><div class="kpi-val white" id="q-recD">--</div><div class="kpi-lbl kl">Dollars Recommended <span class="qtd-label" id="q-lbl1">QTD</span></div><div class="kpi-sub" id="q-recD-sub">&nbsp;</div></div>
     <div class="kpi hero"><div class="kpi-val" id="q-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded <span class="qtd-label" id="q-lbl2">QTD</span></div><div class="kpi-sub" id="q-upD-sub">&nbsp;</div></div>
-    <div class="kpi hero"><div class="kpi-val green" id="q-winPct">--</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub" id="q-winPct-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="kpi-val green" id="q-capture">--</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks" id="q-capture-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="q-winPct">--</div><div class="kpi-lbl kl">Cohort Upgrade Rate</div><div class="kpi-sub" id="q-winPct-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val green" id="q-capture">--</div><div class="kpi-lbl">Cohort Dollar Capture</div><div class="kpi-sub ks" id="q-capture-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-val navy" id="q-openD">--</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks" id="q-openD-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-val muted" id="q-deadD">--</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks" id="q-deadD-sub">&nbsp;</div></div>
   </div>
   <div class="reconcile" id="q-reconcile"></div>
+  <div class="goalbar" id="q-goal"></div>
   <div class="grid">
     <div class="panel full">
       <div class="panel-title">Monthly Recommended vs. Upgraded <span class="qtd-label" id="q-lbl5">QTD</span></div>
@@ -334,12 +344,13 @@ svg{display:block;width:100%}
   <div class="kpi-row-6">
     <div class="kpi hero"><div class="kpi-val white" id="m-recD">--</div><div class="kpi-lbl kl">Dollars Recommended <span class="mtd-label" id="m-lbl1">MTD</span></div><div class="kpi-sub" id="m-recD-sub">&nbsp;</div></div>
     <div class="kpi hero"><div class="kpi-val" id="m-upD">--</div><div class="kpi-lbl kl">Dollars Upgraded <span class="mtd-label" id="m-lbl2">MTD</span></div><div class="kpi-sub" id="m-upD-sub">&nbsp;</div></div>
-    <div class="kpi hero"><div class="kpi-val green" id="m-winPct">--</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub" id="m-winPct-sub">&nbsp;</div></div>
-    <div class="kpi"><div class="kpi-val green" id="m-capture">--</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks" id="m-capture-sub">&nbsp;</div></div>
+    <div class="kpi hero"><div class="kpi-val green" id="m-winPct">--</div><div class="kpi-lbl kl">Cohort Upgrade Rate</div><div class="kpi-sub" id="m-winPct-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-val green" id="m-capture">--</div><div class="kpi-lbl">Cohort Dollar Capture</div><div class="kpi-sub ks" id="m-capture-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-val navy" id="m-openD">--</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks" id="m-openD-sub">&nbsp;</div></div>
     <div class="kpi"><div class="kpi-val muted" id="m-deadD">--</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks" id="m-deadD-sub">&nbsp;</div></div>
   </div>
   <div class="reconcile" id="m-reconcile"></div>
+  <div class="goalbar" id="m-goal"></div>
   <div class="grid">
     <div class="panel full">
       <div class="panel-title">Optimizer Scorecard <span class="mtd-label">MTD</span></div>
@@ -478,27 +489,61 @@ function upQ(r){return g(r,'Quarter Upgraded');}
 
 /* Scope builders: return {rec:[rows],up:[rows]} */
 function scopeYTD(rows){
-  return{
-    rec:rows.filter(r=>recYear(r)===YEAR),
-    up:rows.filter(r=>isUpgraded(r)&&upYear(r)===YEAR),
-    label:String(YEAR)
-  };
+  const rec=rows.filter(r=>recYear(r)===YEAR);
+  const up=rows.filter(r=>isUpgraded(r)&&upYear(r)===YEAR);
+  const recGoal=rec.filter(counts);
+  return{rec:rec,up:up,recGoal:recGoal,union:unionRows(recGoal,up),label:String(YEAR)};
 }
 function recM(r){return g(r,'Month Recommended');}
 function upM(r){return g(r,'Month Upgraded');}
+
+/* ---------------- goal metrics ----------------
+   Two populations, kept apart deliberately.
+
+   GOAL: a record counts toward a period if it was recommended in that period or
+   increased in that period. Each record counts once, and records sitting in
+   'No Longer Counts' are excluded from both sides. This is the number the manual
+   tracker reports and the number the recommendation goal is judged on.
+
+   COHORT: the KPI tiles keep No Longer Counts in, because a recommendation cohort
+   resolves into upgraded, still open, and no longer counts. That is a different
+   question and a different denominator. Do not add the two together. */
+function counts(r){return g(r,'Status')!=='No Longer Counts';}
+function rowKey(r){
+  return g(r,'Task ID')||[g(r,'EAID'),g(r,'Campaign ID'),g(r,'Date Recommended')].join('|');
+}
+function unionRows(a,b){
+  const seen=new Set(),out=[];
+  a.concat(b).forEach(r=>{const k=rowKey(r);if(!seen.has(k)){seen.add(k);out.push(r);}});
+  return out;
+}
+function goalStats(sc){
+  const recN=sc.recGoal.length,upN=sc.up.length,unionN=sc.union.length;
+  return{recN:recN,upN:upN,bothN:recN+upN-unionN,unionN:unionN,
+         upDollars:sc.up.reduce((a,r)=>a+upD(r),0)};
+}
+function goalBar(sc,lbl){
+  const s=goalStats(sc);
+  if(!s.unionN)return'';
+  return'<span class="gb-tag">Goal metrics</span>'+
+    '<strong>'+s.recN+'</strong> recommendations &nbsp;+&nbsp; <strong>'+s.upN+'</strong> increases ('+
+    fmtD(s.upDollars)+') &nbsp;&minus;&nbsp; '+s.bothN+' counted in both &nbsp;=&nbsp; <strong>'+
+    s.unionN+'</strong> records impacting '+esc(lbl)+
+    '<span class="gb-note">Recommendations and increases are separate goals. The impacting total counts each '+
+    'record once and excludes No Longer Counts. The tiles above are cohort analytics on a wider population '+
+    'and will not add up to this figure.</span>';
+}
 function scopeMonth(rows,m){
-  return{
-    rec:rows.filter(r=>recM(r)===m),
-    up:rows.filter(r=>isUpgraded(r)&&upM(r)===m),
-    label:m
-  };
+  const rec=rows.filter(r=>recM(r)===m);
+  const up=rows.filter(r=>isUpgraded(r)&&upM(r)===m);
+  const recGoal=rec.filter(counts);
+  return{rec:rec,up:up,recGoal:recGoal,union:unionRows(recGoal,up),label:m};
 }
 function scopeQuarter(rows,q){
-  return{
-    rec:rows.filter(r=>recQ(r)===q),
-    up:rows.filter(r=>isUpgraded(r)&&upQ(r)===q),
-    label:q
-  };
+  const rec=rows.filter(r=>recQ(r)===q);
+  const up=rows.filter(r=>isUpgraded(r)&&upQ(r)===q);
+  const recGoal=rec.filter(counts);
+  return{rec:rec,up:up,recGoal:recGoal,union:unionRows(recGoal,up),label:q};
 }
 
 /* ---------------- svg helpers ---------------- */
@@ -814,11 +859,12 @@ function renderSummary(){
   document.getElementById('s-deadD').textContent=fmtD(c.deadD);
   document.getElementById('s-recD-sub').textContent=rN.toLocaleString()+' recommendations'+(rN?' · avg '+fmtD(rD/rN):'');
   document.getElementById('s-upD-sub').textContent=uN.toLocaleString()+' upgrades'+(uN?' · avg '+fmtD(uD/uN):'');
-  document.getElementById('s-winPct-sub').textContent=c.upN+' of '+c.recN+' recommendations upgraded';
+  document.getElementById('s-winPct-sub').textContent=c.upN+' of '+c.recN+' recommended · incl. no longer counts';
   document.getElementById('s-capture-sub').textContent=fmtD(c.upIncD)+' landed on '+fmtD(c.upRecD)+' recommended';
   document.getElementById('s-openD-sub').textContent=c.openN+' recommendations not yet resolved';
   document.getElementById('s-deadD-sub').textContent=c.deadN+' closed without an upgrade';
   document.getElementById('s-reconcile').innerHTML=reconcileLine(c,'in '+YEAR);
+  document.getElementById('s-goal').innerHTML=goalBar(sc,String(YEAR));
 
   drawDualMonthly('c1',aggMonthly(sc,true));
   const excluded=DATA.length-new Set([...sc.rec,...sc.up]).size;
@@ -860,11 +906,12 @@ function renderQTD(){
   document.getElementById('q-deadD').textContent=fmtD(c.deadD);
   document.getElementById('q-recD-sub').textContent=sc.rec.length.toLocaleString()+' recommendations';
   document.getElementById('q-upD-sub').textContent=sc.up.length.toLocaleString()+' upgrades';
-  document.getElementById('q-winPct-sub').textContent=c.upN+' of '+c.recN+' recommendations upgraded';
+  document.getElementById('q-winPct-sub').textContent=c.upN+' of '+c.recN+' recommended · incl. no longer counts';
   document.getElementById('q-capture-sub').textContent=fmtD(c.upIncD)+' landed on '+fmtD(c.upRecD)+' recommended';
   document.getElementById('q-openD-sub').textContent=c.openN+' not yet resolved';
   document.getElementById('q-deadD-sub').textContent=c.deadN+' closed without an upgrade';
   document.getElementById('q-reconcile').innerHTML=reconcileLine(c,'in '+q);
+  document.getElementById('q-goal').innerHTML=goalBar(sc,q);
   drawDualMonthly('q1',aggMonthly(sc,false));
   drawButterfly('q2',aggBy(sc,'Optimizer'),20);
   drawButterfly('q3',aggBy(sc,'Coach'),20);
@@ -912,11 +959,12 @@ function renderMTD(){
   document.getElementById('m-recD-sub').textContent=sc.rec.length.toLocaleString()+' recommendations';
   document.getElementById('m-upD-sub').textContent=sc.up.length.toLocaleString()+' upgrades';
   const mat=maturity(sc.rec);
-  document.getElementById('m-winPct-sub').textContent=c.upN+' of '+c.recN+' upgraded'+(mat?' · median age '+mat.medianAge+'d':'');
+  document.getElementById('m-winPct-sub').textContent=c.upN+' of '+c.recN+' recommended · incl. no longer counts'+(mat?' · median age '+mat.medianAge+'d':'');
   document.getElementById('m-capture-sub').textContent=fmtD(c.upIncD)+' landed on '+fmtD(c.upRecD)+' recommended';
   document.getElementById('m-openD-sub').textContent=c.openN+' not yet resolved';
   document.getElementById('m-deadD-sub').textContent=c.deadN+' closed without an upgrade';
   document.getElementById('m-reconcile').innerHTML=reconcileLine(c,'in '+m)+maturityCaveat(mat,m,c.upN);
+  document.getElementById('m-goal').innerHTML=goalBar(sc,m);
   drawButterfly('m1',aggBy(sc,'Optimizer'),20);
   drawButterfly('m2',aggBy(sc,'Coach'),20);
   drawStatusBar('m3',aggStatus(sc.rec),'m3-cap');
@@ -979,12 +1027,13 @@ function personPane(who,key,period,otherLabel,quarter){
   return'<div class="kpi-row-6">'+
     '<div class="kpi hero"><div class="kpi-val white">'+fmtD(rD)+'</div><div class="kpi-lbl kl">Dollars Recommended</div><div class="kpi-sub">'+rN+' recommendations · '+esc(periodLbl)+'</div></div>'+
     '<div class="kpi hero"><div class="kpi-val">'+fmtD(uD)+'</div><div class="kpi-lbl kl">Dollars Upgraded</div><div class="kpi-sub">'+uN+' upgrades · '+esc(periodLbl)+'</div></div>'+
-    '<div class="kpi hero"><div class="kpi-val green">'+(c.recN?c.winRate.toFixed(1)+'%':'--')+'</div><div class="kpi-lbl kl">Upgrade Win Rate</div><div class="kpi-sub">'+c.upN+' of '+c.recN+' upgraded</div></div>'+
-    '<div class="kpi"><div class="kpi-val green">'+(c.upRecD>0?Math.round(c.capture)+'%':'--')+'</div><div class="kpi-lbl">Capture When Upgraded</div><div class="kpi-sub ks">'+fmtD(c.upIncD)+' on '+fmtD(c.upRecD)+'</div></div>'+
+    '<div class="kpi hero"><div class="kpi-val green">'+(c.recN?c.winRate.toFixed(1)+'%':'--')+'</div><div class="kpi-lbl kl">Cohort Upgrade Rate</div><div class="kpi-sub">'+c.upN+' of '+c.recN+' recommended · incl. no longer counts</div></div>'+
+    '<div class="kpi"><div class="kpi-val green">'+(c.upRecD>0?Math.round(c.capture)+'%':'--')+'</div><div class="kpi-lbl">Cohort Dollar Capture</div><div class="kpi-sub ks">'+fmtD(c.upIncD)+' on '+fmtD(c.upRecD)+'</div></div>'+
     '<div class="kpi"><div class="kpi-val navy">'+fmtD(c.openD)+'</div><div class="kpi-lbl">Still Open</div><div class="kpi-sub ks">'+c.openN+' not yet resolved</div></div>'+
     '<div class="kpi"><div class="kpi-val muted">'+fmtD(c.deadD)+'</div><div class="kpi-lbl">No Longer Counts</div><div class="kpi-sub ks">'+c.deadN+' closed without an upgrade</div></div>'+
     '</div>'+
     '<div class="reconcile">'+reconcileLine(c,esc(periodLbl))+'</div>'+
+    '<div class="goalbar">'+goalBar(sc,periodLbl)+'</div>'+
     '<div class="grid">'+
       '<div class="panel full"><div class="panel-title">Monthly Recommended vs. Upgraded</div><svg id="'+uid+'m1" height="220"></svg>'+
         '<div class="legend"><div class="leg"><div class="leg-dot" style="background:#0F1735"></div>Dollars Recommended</div><div class="leg"><div class="leg-dot" style="background:#FF5000"></div>Dollars Upgraded</div><div class="leg"><div class="leg-dot" style="background:#2D9D6A"></div>Capture rate</div></div></div>'+

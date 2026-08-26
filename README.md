@@ -18,6 +18,10 @@ Target URL once Pages is enabled: `https://timramosthryv.github.io/budget-increa
 | `.github/workflows/refresh.yml` | Scheduled Asana export, twice daily |
 | `.github/workflows/build.yml` | Rebuilds `index.html` whenever data or the template changes |
 
+The "Last updated" stamp in the header is written by `build.py` in US Central and labeled `CT`.
+GitHub runners are UTC, so without the conversion the dashboard would show a time several hours
+ahead of the team.
+
 ## What the dashboard tracks
 
 Sections pulled from Asana project `1207771164017257`:
@@ -28,15 +32,15 @@ Sections pulled from Asana project `1207771164017257`:
 | Reviewed - Upgraded 2026 | Upgraded |
 | No Longer Counts 2026 | No Longer Counts |
 
-Fields captured: Submitted By (PCSM), Thryv Leads Cohort or Escalation Type, Date Recommended,
+Fields captured: Submitted By (Optimizer), Thryv Leads Cohort or Escalation Type, Date Recommended,
 Date Upgrade Happened, Dollar Amount Recommended, Dollar Amount Increased. Business Name, EAID,
 Campaign ID, Other Product Recommended, Date Reviewed Last, and Date No Longer Valid come along
 for context.
 
-**PCSM** comes from the Submitted By custom field. **Coach** is always the Asana assignee.
+**Optimizer** comes from the Submitted By custom field. **Coach** is always the Asana assignee.
 
-If Submitted By is empty, the PCSM column is left blank rather than guessed from the task title.
-Those records still count in the totals but group under "Unassigned" in the PCSM breakdowns, and
+If Submitted By is empty, the Optimizer column is left blank rather than guessed from the task title.
+Those records still count in the totals but group under "Unassigned" in the Optimizer breakdowns, and
 the Raw Data tab reports how many are affected so they can be corrected in Asana. The export log
 in Actions prints the same warning. Business Name falls back to the text after the first comma in
 the task title, since that field is only used for labeling accounts.
@@ -72,10 +76,57 @@ Filenames are date stamped, for example `budget-increase-recommendations_all_202
 
 ## Metric definitions
 
-- **Dollar capture rate** = Dollar Amount Increased / Dollar Amount Recommended
-- **Upgrade conversion rate** = upgraded records / all reviewed records, including No Longer Counts
+### Goal metrics vs. cohort analytics
+
+These are two different populations and the dashboard reports them separately on purpose.
+Adding them together produces a number that means nothing.
+
+**Goal metrics** appear in the blue strip under the KPI tiles on the YTD, QTD, MTD, By
+Optimizer and By Coach views. A record counts toward a period if it was recommended in
+that period **or** increased in that period. Each record counts once, and anything sitting
+in `No Longer Counts 2026` is excluded from both sides. This is the definition the manual
+tracker uses, confirmed against the June 2026 export: 134 recommendations + 23 increases
+minus 6 counted in both equals 151 records impacting June.
+
+Recommendations and increases are separate goals. The recommendation goal is judged on a
+count. The kicker is earned on dollars increased.
+
+**Cohort analytics** are the KPI tiles: Cohort Upgrade Rate, Cohort Dollar Capture, Still
+Open and No Longer Counts. These take every record recommended in the period, including
+ones later moved to No Longer Counts, and show how that cohort resolved. No Longer Counts
+sits in the Cohort Upgrade Rate denominator by design, which is why the tiles will not add
+up to the goal figure.
+
+### Date boundaries
+
+Period membership is decided on the `Month Recommended` and `Month Upgraded` strings, which
+`fetch_asana.py` builds from the year and month of each date. There is no inclusive or
+exclusive comparison anywhere, so a record dated the first or last day of a month cannot
+fall out of its own period. Any hand-built export feeding this process should use the same
+approach.
+
+
+- **Upgrade win rate** = upgraded records / all records recommended in the period, including No Longer Counts
+- **Capture when upgraded** = Dollar Amount Increased / Dollar Amount Recommended, counting only the records that upgraded
+- **Still open** = dollars recommended on records sitting in Reviewed - No Upgrade Yet
+- **No longer counts** = dollars recommended on records closed without an upgrade
 - Recommendation volume and dollars plot to the month of **Date Recommended**
 - Upgrade volume and dollars plot to the month of **Date Upgrade Happened**
+- The MTD tab applies the same definitions to a single month, so the reconciliation identity
+  holds within the month as well
+
+Win rate and capture are reported as two separate figures rather than one blended
+percentage. A single ratio of dollars upgraded to dollars recommended is misleading for two
+reasons. First, it cannot distinguish a low number caused by few wins from one caused by small
+wins, and in this data those pull in opposite directions: only about one recommendation in eight
+converts, but the ones that do land well above the amount recommended. Second, the numerator and
+denominator are dated on different fields, so they describe overlapping but non-identical sets of
+records.
+
+The three outcome tiles reconcile against the total by construction. Every recommendation resolves
+to exactly one of upgraded, still open, or no longer counts, so those three dollar figures always
+sum to dollars recommended. The dashboard prints that identity under the KPI row and flags it if
+it ever fails to balance.
 
 Because the two metrics use different dates, a recommendation made in June that upgrades in
 August shows in June on the recommended series and August on the upgraded series. That is
@@ -83,21 +134,60 @@ intentional and is called out on the chart.
 
 ## Tabs
 
-1. **YTD Summary** — headline totals, monthly recommended vs upgraded, PCSM and Coach scorecards, status mix, cohort performance, full account detail
+1. **YTD Summary** — headline totals, monthly recommended vs upgraded, Optimizer and Coach scorecards, status mix, cohort performance, full account detail
 2. **QTD Summary** — same view scoped to a selected quarter
-3. **By PCSM** — per-person drill-down with YTD and QTD toggle
-4. **By Coach** — per-coach drill-down with a PCSM roll-up
-5. **Kicker** — placeholder, waiting on the qualifying rules and payout tiers
-6. **Raw Data** — filterable table, CSV export, and data source notes
+3. **MTD Summary** — same view scoped to a single month, selectable from any month with activity
+4. **By Optimizer** — per-person drill-down with YTD and QTD toggle
+5. **By Coach** — per-coach drill-down with a Optimizer roll-up
+6. **Recommendation Kickers** — Optimizers ranked by number of recommendations submitted, highest
+   first, with a QTD and YTD toggle. Each row expands to the account level detail behind the
+   count: account name, Thryv Leads cohort or escalation type, date recommended, and dollar
+   amount recommended. Modeled on the SaaS Growth kicker tracker.
+7. **Raw Data** — filterable table, CSV export, and data source notes
 
-The PCSM and Coach scorecards are read left to right: recommendations on the left, upgrades that
+The Optimizer and Coach scorecards are read left to right: recommendations on the left, upgrades that
 actually landed on the right, with the capture rate on the far right.
+
+A second kicker tab for upgrades can be added alongside the first when the rules are defined.
+
+### Kicker credit rules
+
+Confirmed with the director. Two credits, each on its own clock:
+
+**Recommendation credit is permanent.** It is earned when the Optimizer submits and is never taken
+back. A recommendation that later moves to No Longer Counts still counts. It lands in the period
+of Date Recommended.
+
+**Upgrade credit lands in the period the upgrade happened**, keyed on Date Upgrade Happened, not
+on when the recommendation was made. A Q2 recommendation that upgrades in Q3 gives the
+recommendation credit to Q2 and the upgrade credit to Q3.
+
+Because the two credits use different dates, the Recommendations and Upgrades columns describe
+overlapping but different sets of records. That is intentional. Rows where the upgrade carried in
+from an earlier period are marked "carried" next to the upgrade count, and the expanded detail
+labels every record as Recommendation, Rec + Upgrade, or Upgrade only.
+
+A useful consequence: because upgrades are credited on upgrade date, the kicker upgrade totals
+agree with the Dollars Upgraded tile on the By Coach and By Optimizer tabs. An earlier build credited
+upgrades on the recommendation date, which made those two tabs disagree.
+
+### Kicker payout
+
+The payout column reads "Pending" and the payout KPI shows a dash. No qualifying threshold or
+tier table has been defined for recommendation kickers, and inventing one would put numbers in
+front of leaders that nobody agreed to. Everything else on the tab is live.
+
+For reference, the SaaS Growth dashboard pays on a quarterly threshold: kickers are earned on
+each opportunity beyond the third in a quarter, with tiered amounts by dollar band and a flat
+rate for certain growth types. If recommendation kickers follow a similar shape, the rule drops
+into one function and the column fills in with no other changes.
+
 
 ## Setup
 
 1. **Add the files.** Upload everything in this folder to the repo root, keeping
-   `.github/workflows/` intact. Do not upload `index-sample-preview.html` or `data-sample.xlsx`;
-   those are local test artifacts.
+   `.github/workflows/` intact. Create the two workflow files with Add file, Create new file and
+   type the full path, since drag and drop is unreliable with dotted folders.
 2. **Create the Asana token.** In Asana, go to your profile settings, Apps, Personal access
    tokens, and create one for this dashboard.
 3. **Store the token.** In the repo, go to Settings, Secrets and variables, Actions, then

@@ -138,6 +138,35 @@ un-gated totals match the manual tracker to the dollar, $1,600 and $2,650. So th
 rule and the practice do not currently agree, and that is a decision for the business rather
 than something the dashboard should assume.
 
+### Integrity check
+
+Sits under the tracker table on the Recommendation Kickers tab and re-runs on every
+refresh. Asana is the system of record. The manual tracker may carry deliberate overrides,
+so this does not attempt to match it. Its job is to prove the dashboard's figures stand on
+their own and to name every record that needs fixing at source.
+
+Eight checks, split by whether money moves:
+
+**Affects pay**
+
+- Increase landed outside the 90-day window, with the day count shown
+- Increase dated before its own recommendation, which is a data error not a fast conversion
+- Increase missing a date, so the window cannot be measured
+- One campaign paying the kicker more than once in the period, matched on EAID plus
+  Campaign ID within the same Optimizer. Records sharing an identical upgrade date are
+  called out as likely duplicates; different dates may be two genuine increases
+- One campaign credited to two different Optimizers in the same period
+- A record with no `Submitted By` value, which cannot be credited to anyone
+
+**Data quality**
+
+- Recommendation below the $100 minimum, excluded from the goal count
+- Active Optimizer with no quarterly requirement on the roster, so the goal cannot be
+  evaluated and nothing pays
+
+A summary strip shows the count for each check plus the total kicker dollars affected. When
+a period is clean it says so rather than showing an empty table.
+
 ### Date boundaries
 
 Period membership is decided on the `Month Recommended` and `Month Upgraded` strings, which

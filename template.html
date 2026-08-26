@@ -140,6 +140,16 @@ svg{display:block;width:100%}
 .gmiss{display:inline-block;background:#FDECEE;color:#A32B39;border:1px solid #F0B7BF;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700}
 .gnone{display:inline-block;background:#EDF2F7;color:#718096;border:1px solid #D9E1EA;border-radius:12px;padding:2px 10px;font-size:10px;font-weight:700}
 .khold{color:#A32B39;font-size:10px}
+.sev{display:inline-block;border-radius:4px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.sev-pay{background:#FDECEE;color:#A32B39;border:1px solid #F0B7BF}
+.sev-data{background:#FFFBEB;color:#8A6A00;border:1px solid #EBD79A}
+.sev-ok{background:#E6F4EC;color:#1E6B49;border:1px solid #A9D9BF}
+.ic-clean{padding:14px 18px;background:#E6F4EC;border:1px solid #A9D9BF;border-radius:8px;color:#1E6B49;font-size:12px;font-weight:600}
+.ic-sum{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.ic-chip{border:1px solid #E2E8F0;border-radius:8px;padding:9px 14px;font-size:11px;color:#4A5568;background:white}
+.ic-chip strong{display:block;font-size:19px;color:#0F1735;line-height:1.2}
+.ic-chip.hit{border-color:#F0B7BF;background:#FFF7F8}
+.ic-chip.hit strong{color:#A32B39}
 .reconcile{padding:10px 36px 0;font-size:11px;color:#718096;line-height:1.6}
 .caveat{margin:10px 36px 0;padding:10px 16px;background:#FFFBEB;border:1px solid #EBD79A;border-radius:8px;font-size:11px;color:#8A6A00;line-height:1.6}
 .caveat strong{color:#6B5200}
@@ -536,6 +546,126 @@ const KICKER_REQUIREMENT={
   'Michael Mercedes Montero Mieses':5
 };
 function requirementFor(n){const v=KICKER_REQUIREMENT[n];return v==null?null:v;}
+
+/* ---------------- integrity check ----------------
+   Asana is the system of record. The manual tracker may carry deliberate
+   overrides, so the point here is not to match it, it is to prove that what the
+   dashboard calculates is defensible on its own. Every check below either moves
+   money or breaks attribution, and each one names the records so they can be
+   fixed at source rather than argued about in a meeting. */
+function campaignKey(r){
+  return (g(r,'EAID')||'').trim().toUpperCase().replace(/\s+/g,'')+'|'+
+         (g(r,'Campaign ID')||'').trim().toUpperCase().replace(/\s+/g,'');
+}
+function integrityScan(recRaw,upRows){
+  const F={late:[],reversed:[],noDates:[],lowRec:[],repeatSame:[],repeatCross:[],noOwner:[],noReq:[]};
+
+  upRows.forEach(r=>{
+    const l=daysToUpgrade(r);
+    if(l==null)F.noDates.push(r);
+    else if(l<0)F.reversed.push(r);
+    else if(l>KICKER_MAX_DAYS)F.late.push(r);
+  });
+  recRaw.forEach(r=>{ if(!qualifies(r))F.lowRec.push(r); });
+  recRaw.concat(upRows).forEach(r=>{ if(!g(r,'Optimizer'))F.noOwner.push(r); });
+
+  /* One campaign paying the kicker more than once inside the period. */
+  const same={};
+  upRows.filter(kickerEligible).forEach(r=>{
+    const k=(g(r,'Optimizer')||'')+'~'+campaignKey(r);
+    (same[k]=same[k]||[]).push(r);
+  });
+  Object.keys(same).forEach(k=>{ if(same[k].length>1)F.repeatSame.push(same[k]); });
+
+  /* One campaign credited to two different people in the period. */
+  const cross={};
+  recRaw.filter(qualifies).concat(upRows.filter(kickerEligible)).forEach(r=>{
+    const k=campaignKey(r);
+    if(k==='|')return;
+    (cross[k]=cross[k]||{}); cross[k][g(r,'Optimizer')||'Unassigned']=r;
+  });
+  Object.keys(cross).forEach(k=>{
+    const who=Object.keys(cross[k]);
+    if(who.length>1)F.repeatCross.push(who.map(w=>cross[k][w]));
+  });
+  return F;
+}
+function integrityPanel(recRaw,upRows,list,periodLbl){
+  const F=integrityScan(recRaw,upRows);
+  F.noReq=list.filter(o=>o.req==null&&(o.recN||o.eligN));
+  const money=r=>KICKER_PER_UPGRADE;
+  const rowsFor=(arr,label,sev,detail,impact)=>arr.map(r=>'<tr>'+
+    '<td>'+label+'</td>'+
+    '<td><span class="sev '+sev+'">'+(sev==='sev-pay'?'affects pay':'data quality')+'</span></td>'+
+    '<td>'+esc(g(r,'Optimizer')||'&mdash; unattributed &mdash;')+'</td>'+
+    '<td>'+esc(g(r,'Account Name')||g(r,'Task Name')||'--')+'</td>'+
+    '<td>'+detail(r)+'</td>'+
+    '<td class="num">'+(impact?fmtD(impact(r)):'--')+'</td></tr>').join('');
+
+  let body='';
+  body+=rowsFor(F.late,'Increase outside the 90-day window','sev-pay',
+    r=>'recommended '+esc(g(r,'Date Recommended'))+', upgraded '+esc(g(r,'Date Upgrade Happened'))+
+       ' &middot; <strong>'+daysToUpgrade(r)+' days</strong>',money);
+  body+=rowsFor(F.reversed,'Increase dated before its recommendation','sev-pay',
+    r=>'recommended '+esc(g(r,'Date Recommended'))+', upgraded '+esc(g(r,'Date Upgrade Happened'))+
+       ' &middot; <strong>'+daysToUpgrade(r)+' days</strong>. One date is wrong',money);
+  body+=rowsFor(F.noDates,'Increase with a missing date','sev-pay',
+    r=>'cannot measure the 90-day window',money);
+  body+=rowsFor(F.lowRec,'Recommendation under the $100 minimum','sev-data',
+    r=>'recommended '+fmtD(recD(r))+', excluded from the goal count',null);
+  body+=rowsFor(F.noOwner,'No Submitted By value in Asana','sev-pay',
+    r=>'cannot be credited to anyone',null);
+  body+=F.repeatSame.map(gp=>'<tr>'+
+    '<td>Same campaign paying the kicker more than once</td>'+
+    '<td><span class="sev sev-pay">affects pay</span></td>'+
+    '<td>'+esc(g(gp[0],'Optimizer'))+'</td>'+
+    '<td>'+esc(g(gp[0],'Account Name'))+'</td>'+
+    '<td>'+gp.length+' records &middot; upgraded '+gp.map(r=>esc(g(r,'Date Upgrade Happened'))).join(', ')+
+      (new Set(gp.map(r=>g(r,'Date Upgrade Happened'))).size===1?' &middot; <strong>identical date, likely duplicate</strong>':' &middot; different dates, may be genuine')+'</td>'+
+    '<td class="num">'+fmtD((gp.length-1)*KICKER_PER_UPGRADE)+'</td></tr>').join('');
+  body+=F.repeatCross.map(gp=>'<tr>'+
+    '<td>One campaign credited to two Optimizers</td>'+
+    '<td><span class="sev sev-pay">affects pay</span></td>'+
+    '<td>'+gp.map(r=>esc(g(r,'Optimizer')||'Unassigned')).join(' and ')+'</td>'+
+    '<td>'+esc(g(gp[0],'Account Name'))+'</td>'+
+    '<td>same EAID and campaign counted for each of them in this period</td>'+
+    '<td class="num">--</td></tr>').join('');
+  body+=F.noReq.map(o=>'<tr>'+
+    '<td>Active with no quarterly requirement on the roster</td>'+
+    '<td><span class="sev sev-data">data quality</span></td>'+
+    '<td>'+esc(o.name)+'</td>'+
+    '<td>--</td>'+
+    '<td>'+o.recN+' recommendations, '+o.eligN+' eligible increases. Goal cannot be evaluated so nothing pays</td>'+
+    '<td class="num">'+(o.eligN?fmtD(o.eligN*KICKER_PER_UPGRADE):'--')+'</td></tr>').join('');
+
+  const held=(F.late.length+F.reversed.length+F.noDates.length)*KICKER_PER_UPGRADE;
+  const dupRisk=F.repeatSame.reduce((a,gp)=>a+(gp.length-1)*KICKER_PER_UPGRADE,0);
+  const chip=(n,lbl)=>'<div class="ic-chip'+(n?' hit':'')+'"><strong>'+n+'</strong>'+lbl+'</div>';
+  const total=F.late.length+F.reversed.length+F.noDates.length+F.lowRec.length+
+    F.repeatSame.length+F.repeatCross.length+F.noOwner.length+F.noReq.length;
+
+  return '<div class="panel full">'+
+    '<div class="panel-title">Integrity Check &mdash; '+esc(periodLbl)+'</div>'+
+    '<div class="panel-sub">Asana is the system of record here. The manual tracker may carry deliberate overrides, so this does not try to match it. '+
+      'It proves the figures above stand on their own, and names every record that needs fixing at source. '+
+      '<strong>Affects pay</strong> means the kicker changes if the record is wrong. <strong>Data quality</strong> means attribution or reporting is affected but no money moves.</div>'+
+    '<div class="ic-sum">'+
+      chip(F.late.length,'outside 90 days')+
+      chip(F.reversed.length,'upgrade before rec')+
+      chip(F.noDates.length,'missing a date')+
+      chip(F.repeatSame.length,'campaign paid twice')+
+      chip(F.repeatCross.length,'split across two people')+
+      chip(F.lowRec.length,'under $100')+
+      chip(F.noOwner.length,'no Submitted By')+
+      chip(F.noReq.length,'no requirement set')+
+      '<div class="ic-chip'+(held+dupRisk?' hit':'')+'"><strong>'+fmtD(held+dupRisk)+'</strong>kicker affected</div>'+
+    '</div>'+
+    (total?'<div class="table-wrap"><table class="log-table"><thead><tr>'+
+      '<th>Check</th><th>Severity</th><th>Optimizer</th><th>Account</th><th>Detail</th><th class="num">$ Impact</th>'+
+      '</tr></thead><tbody>'+body+'</tbody></table></div>'
+     :'<div class="ic-clean">No integrity issues found in this period. Every increase sits inside the 90-day window, every recommendation clears $100, no campaign is counted twice, and every record is attributed to someone with a requirement on the roster.</div>')+
+    '</div>';
+}
 function qualifies(r){return recD(r)>=MIN_REC_AMOUNT;}
 function daysToUpgrade(r){
   const a=g(r,'Date Recommended'),b=g(r,'Date Upgrade Happened');
@@ -1180,6 +1310,9 @@ function renderKicker(){
     : (r=>isUpgraded(r)&&upYear(r)===YEAR);
   /* An increase pays only inside the 90-day window from its own recommendation. */
   const eligIn = r=>upIn(r)&&kickerEligible(r);
+  /* Same period, no dollar filter, so the integrity check can see the records the
+     goal count deliberately drops. */
+  const recInRaw = kickerPeriod==='qtd' ? (r=>recQ(r)===kickerQuarter) : (r=>recYear(r)===YEAR);
   const periodLbl = kickerPeriod==='qtd' ? (kickerQuarter||'--') : String(YEAR)+' YTD';
 
   const recRows=DATA.filter(recIn);
@@ -1292,6 +1425,7 @@ function renderKicker(){
           '<th style="text-align:center">Goal</th><th class="num">Kicker</th>'+
         '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
       '</div>'+
+      integrityPanel(DATA.filter(recInRaw),upRows,list,periodLbl)+
     '</div>';
 }
 

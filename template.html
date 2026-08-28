@@ -589,7 +589,7 @@ function campaignKey(r){
          (g(r,'Campaign ID')||'').trim().toUpperCase().replace(/\s+/g,'');
 }
 function integrityScan(recRaw,upRows){
-  const F={late:[],reversed:[],noDates:[],lowRec:[],repeatSame:[],repeatCross:[],noOwner:[],noReq:[]};
+  const F={late:[],reversed:[],noDates:[],lowRec:[],lateSub:[],repeatSame:[],repeatCross:[],noOwner:[],noReq:[]};
 
   upRows.forEach(r=>{
     const l=daysToUpgrade(r);
@@ -597,7 +597,12 @@ function integrityScan(recRaw,upRows){
     else if(l<0)F.reversed.push(r);
     else if(l>KICKER_MAX_DAYS)F.late.push(r);
   });
-  recRaw.forEach(r=>{ if(!qualifies(r))F.lowRec.push(r); });
+  /* Two separate reasons a recommendation drops out of the goal count. Reporting
+     both under one label showed late records as though they were under $100. */
+  recRaw.forEach(r=>{
+    if(recD(r)<MIN_REC_AMOUNT)F.lowRec.push(r);
+    else if(!submittedInTime(r))F.lateSub.push(r);
+  });
   recRaw.concat(upRows).forEach(r=>{ if(!g(r,'Optimizer'))F.noOwner.push(r); });
 
   /* One campaign paying the kicker more than once inside the period. */
@@ -642,8 +647,13 @@ function integrityPanel(recRaw,upRows,list,periodLbl,departedRows){
        ' &middot; <strong>'+daysToUpgrade(r)+' days</strong>. One date is wrong',money);
   body+=rowsFor(F.noDates,'Increase with a missing date','sev-pay',
     r=>'cannot measure the 90-day window',money);
-  body+=rowsFor(F.lowRec,'Recommendation under the $100 minimum','sev-data',
+  body+=rowsFor(F.lowRec,'Recommendation under the $'+MIN_REC_AMOUNT+' minimum','sev-data',
     r=>'recommended '+fmtD(recD(r))+', excluded from the goal count',null);
+  body+=rowsFor(F.lateSub,'Recommendation entered after the 9th of the following month','sev-pay',
+    r=>'recommended '+esc(String(g(r,'Date Recommended')).slice(0,10))+
+       ', entered '+esc(String(g(r,'Created At')).slice(0,10))+
+       ' &middot; deadline was the 9th of the following month. '+fmtD(recD(r))+
+       ', excluded from the goal count',null);
   body+=rowsFor(F.noOwner,'No Submitted By value in Asana','sev-pay',
     r=>'cannot be credited to anyone',null);
   body+=F.repeatSame.map(gp=>'<tr>'+
@@ -682,8 +692,8 @@ function integrityPanel(recRaw,upRows,list,periodLbl,departedRows){
   const dupRisk=F.repeatSame.reduce((a,gp)=>a+(gp.length-1)*KICKER_PER_UPGRADE,0);
   const chip=(n,lbl)=>'<div class="ic-chip'+(n?' hit':'')+'"><strong>'+n+'</strong>'+lbl+'</div>';
   const total=F.late.length+F.reversed.length+F.noDates.length+F.lowRec.length+
-    F.repeatSame.length+F.repeatCross.length+F.noOwner.length+F.noReq.length+
-    (departedRows||[]).length;
+    F.lateSub.length+F.repeatSame.length+F.repeatCross.length+F.noOwner.length+
+    F.noReq.length+(departedRows||[]).length;
 
   return '<div class="panel full">'+
     '<div class="panel-title">Integrity Check &mdash; '+esc(periodLbl)+'</div>'+
@@ -697,6 +707,7 @@ function integrityPanel(recRaw,upRows,list,periodLbl,departedRows){
       chip(F.repeatSame.length,'campaign paid twice')+
       chip(F.repeatCross.length,'split across two people')+
       chip(F.lowRec.length,'under $100')+
+      chip(F.lateSub.length,'entered after the 9th')+
       chip(F.noOwner.length,'no Submitted By')+
       chip(F.noReq.length,'no requirement set')+
       chip((departedRows||[]).length,'departed Optimizer')+
@@ -705,7 +716,7 @@ function integrityPanel(recRaw,upRows,list,periodLbl,departedRows){
     (total?'<div class="table-wrap"><table class="log-table"><thead><tr>'+
       '<th>Check</th><th>Severity</th><th>Optimizer</th><th>Account</th><th>Detail</th><th class="num">$ Impact</th>'+
       '</tr></thead><tbody>'+body+'</tbody></table></div>'
-     :'<div class="ic-clean">No integrity issues found in this period. Every increase sits inside the 90-day window, every recommendation clears $100, no campaign is counted twice, and every record is attributed to someone with a requirement on the roster.</div>')+
+     :'<div class="ic-clean">No integrity issues found in this period. Every increase sits inside the 90-day window, every recommendation clears $'+MIN_REC_AMOUNT+' and was entered by the 9th of the following month, no campaign is counted twice, and every record is attributed to someone with a requirement on the roster.</div>')+
     '</div>';
 }
 /* "Must be submitted by the 9th of the following month to qualify." Measured as

@@ -206,6 +206,12 @@ Eight checks, split by whether money moves:
   evaluated and nothing pays
 - Record belonging to a departed Optimizer, excluded from the period
 
+Plus, under affects pay:
+
+- Recommendation entered after the 9th of the following month, showing its Date Recommended
+  and Created At. Kept separate from the $100 check, because reporting both under one label
+  displayed late records as though they were under the minimum
+
 A summary strip shows the count for each check plus the total kicker dollars affected. When
 a period is clean it says so rather than showing an empty table.
 

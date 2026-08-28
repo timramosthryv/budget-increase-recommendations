@@ -90,6 +90,11 @@ because the 90-day closure voids kicker eligibility only, not the recommendation
 Verified against March 2026: counting them gives 176 against the manual tracker's 183,
 while excluding them gives roughly 85.
 
+*Submission deadline.* A recommendation must be entered in Asana by the **9th of the month
+following** its Date Recommended, measured on Created At and inclusive of the 9th. Six records
+in 2026 fail this, four of them Jean Rivera Tejeda's April recommendations entered on 5/13.
+A record missing either date is not penalised, since the rule cannot be tested.
+
 *Kicker.* **$50 per increase**, and the increase must land within **90 days** of its own
 recommendation. It is payable only once the quarterly requirement is met, which is 30 for
 PCSM and Senior PCSM roles and 5 for Escalation Associates and Reactive Optimization
@@ -154,6 +159,25 @@ one, and add a line per person as people leave.
 Records belonging to a departed Optimizer are not silently dropped. They appear in the
 integrity check as a data quality row naming the person, the account and the end date, so
 the exclusion is auditable.
+
+### Interpretations applied
+
+The written criteria do not cover every case. Rather than bury the calls in code, the
+Recommendation Kickers tab lists all eight on screen with what each is worth in the selected
+period, and a running total at stake. Change any one and the kicker moves by the amount shown.
+
+The two that carry real money in Q2 2026 are: an increase only counts when the record status
+is Upgraded, so a No Longer Counts record whose increase landed inside the window pays nothing;
+and repeat records on one campaign each pay, flagged in the integrity check but not
+de-duplicated, because two increases on one account may be genuine.
+
+### Name corrections
+
+`NAME_FIXES` in `template.html` corrects Asana's `Submitted By` picklist on load, applied to
+both the Optimizer and Coach fields so every count, grouping, requirement lookup and label
+downstream uses the real name. Currently `Edgar Acost` renders as `Edgar Acosta`. Fix the
+picklist in Asana and the entry becomes a harmless no-op. Separately, the roster's
+`Elias Ellison` is `Eli Ellison` in Asana, which is correct as-is and needs no mapping.
 
 ### Integrity check
 

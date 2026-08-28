@@ -472,6 +472,20 @@ const STATUS_ORDER=['Upgraded','No Upgrade Yet','No Longer Counts'];
 const STATUS_COLORS={'Upgraded':GREEN,'No Upgrade Yet':YELLOW,'No Longer Counts':'#CBD5E0'};
 
 let DATA=[],DATA_SOURCE='loading';
+
+/* Asana's 'Submitted By' picklist holds two misspellings. Corrected once on load
+   so every count, grouping, requirement lookup and label downstream uses the real
+   name. Fix them in Asana and these entries become harmless no-ops. */
+const NAME_FIXES={'Edgar Acost':'Edgar Acosta'};
+function normalizeNames(rows){
+  rows.forEach(r=>{
+    const n=r['Optimizer'];
+    if(n&&NAME_FIXES[n])r['Optimizer']=NAME_FIXES[n];
+    const c=r['Coach'];
+    if(c&&NAME_FIXES[c])r['Coach']=NAME_FIXES[c];
+  });
+  return rows;
+}
 let DATA_TS='@@TIMESTAMP@@';
 const YEAR=new Date().getFullYear();
 function currentQuarter(){const d=new Date();return'Q'+Math.ceil((d.getMonth()+1)/3)+' '+d.getFullYear();}
@@ -535,7 +549,7 @@ const KICKER_PER_UPGRADE=50, MIN_REC_AMOUNT=100, KICKER_MAX_DAYS=90;
    defaulting to a number, because guessing a requirement decides whether someone
    gets paid. */
 const KICKER_REQUIREMENT={
-  'Cindy Austin':30,'DaJuana Owens':30,'Don Nimrichter':30,'Edgar Acost':30,
+  'Cindy Austin':30,'DaJuana Owens':30,'Don Nimrichter':30,'Edgar Acosta':30,
   'Eli Ellison':30,'Ely Alcantara Reyes':30,'Jean Rivera Tejeda':30,
   'Johanna Diaz Ramirez':30,'Keila Revell':30,'Nicole Marcelino Puello':30,
   'Niurkiss Mallen Burgos':30,'Emily Ortiz Acevedo':30,
@@ -694,7 +708,19 @@ function integrityPanel(recRaw,upRows,list,periodLbl,departedRows){
      :'<div class="ic-clean">No integrity issues found in this period. Every increase sits inside the 90-day window, every recommendation clears $100, no campaign is counted twice, and every record is attributed to someone with a requirement on the roster.</div>')+
     '</div>';
 }
-function qualifies(r){return recD(r)>=MIN_REC_AMOUNT;}
+/* "Must be submitted by the 9th of the following month to qualify." Measured as
+   Created At against the 9th of the month after Date Recommended, inclusive. A
+   record missing either date is not penalised, since the rule cannot be tested. */
+function submittedInTime(r){
+  const rec=g(r,'Date Recommended'), made=g(r,'Created At');
+  if(!rec||!made)return true;
+  const d=new Date(String(rec).slice(0,10)+'T00:00:00Z');
+  if(isNaN(d))return true;
+  const deadline=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,9,23,59,59);
+  const t=new Date(String(made).slice(0,10)+'T00:00:00Z').getTime();
+  return isNaN(t)?true:t<=deadline;
+}
+function qualifies(r){return recD(r)>=MIN_REC_AMOUNT&&submittedInTime(r);}
 function daysToUpgrade(r){
   const a=g(r,'Date Recommended'),b=g(r,'Date Upgrade Happened');
   if(!a||!b)return null;
@@ -707,6 +733,75 @@ function kickerEligible(r){
   if(!qualifies(r))return false;
   const l=daysToUpgrade(r);
   return l!=null&&l>=0&&l<=KICKER_MAX_DAYS;
+}
+/* ---------------- assumptions ----------------
+   The criteria leave gaps. Every call made to fill one is listed on screen with
+   its dollar impact for the period, so it can be challenged rather than
+   discovered in a payout dispute. */
+function assumptionRows(recRaw,upAny,upRows,list){
+  const K=KICKER_PER_UPGRADE;
+  const lag=r=>daysToUpgrade(r);
+  const inWindow=r=>{const l=lag(r);return l!=null&&l>=0&&l<=KICKER_MAX_DAYS;};
+
+  const nlcInWindow=upAny.filter(r=>g(r,'Status')==='No Longer Counts'&&inWindow(r)&&recD(r)>=MIN_REC_AMOUNT);
+  const reversed=upAny.filter(r=>{const l=lag(r);return l!=null&&l<0;});
+  const lateRec=recRaw.filter(r=>recD(r)>=MIN_REC_AMOUNT&&!submittedInTime(r));
+  const lowUnderlying=upRows.filter(r=>inWindow(r)&&recD(r)<MIN_REC_AMOUNT);
+  const noReq=list.filter(o=>o.req==null&&(o.recN||o.eligN));
+  const noReqDollars=noReq.reduce((a,o)=>a+o.eligN*K,0);
+
+  const dup={};
+  upRows.filter(kickerEligible).forEach(r=>{
+    const k=(g(r,'Optimizer')||'')+'~'+campaignKey(r);
+    (dup[k]=dup[k]||[]).push(r);
+  });
+  const dupExtra=Object.values(dup).reduce((a,gp)=>a+Math.max(0,gp.length-1),0);
+
+  return [
+   ['An increase only counts when the record status is Upgraded',
+    'A No Longer Counts record whose increase landed inside the window pays nothing',
+    nlcInWindow.length, nlcInWindow.length*K],
+   ['A recommendation submitted after the 9th of the following month is excluded',
+    'Measured on Created At. This is a stated rule, listed here because the deadline date is an interpretation',
+    lateRec.length, 0],
+   ['An increase dated before its own recommendation is rejected',
+    'Treated as a data error rather than a fast conversion',
+    reversed.length, reversed.length*K],
+   ['Repeat records on one campaign each pay',
+    'Flagged in the integrity check but not de-duplicated, because two increases on one account may be genuine',
+    dupExtra, dupExtra*K],
+   ['The kicker requires its own recommendation to have cleared $'+MIN_REC_AMOUNT,
+    'The rule says only $'+K+' per upgrade and does not restate the minimum',
+    lowUnderlying.length, lowUnderlying.length*K],
+   ['Anyone missing from the requirement roster pays nothing',
+    'Rather than defaulting to 30 or 5, since guessing a requirement decides whether someone gets paid',
+    noReq.length, noReqDollars],
+   ['The $'+MIN_REC_AMOUNT+' test uses Dollar Amount Recommended',
+    'Not Dollar Amount Increased',
+    null, 0],
+   ['Two Asana names corrected on load',
+    Object.keys(NAME_FIXES).map(k=>k+' shown as '+NAME_FIXES[k]).join('; ')+'. Elias Ellison on the roster is Eli Ellison in Asana',
+    Object.keys(NAME_FIXES).length, 0]
+  ];
+}
+function assumptionsPanel(recRaw,upAny,upRows,list,periodLbl){
+  const rows=assumptionRows(recRaw,upAny,upRows,list);
+  const tot=rows.reduce((a,r)=>a+r[3],0);
+  return '<div class="panel full">'+
+    '<div class="panel-title">Interpretations Applied &mdash; '+esc(periodLbl)+'</div>'+
+    '<div class="panel-sub">The written criteria do not cover every case. These are the calls this dashboard makes, '+
+      'each with what it is worth in this period, so none of them is buried in code. Change any one and the kicker changes '+
+      'by the amount shown. Total currently at stake: <strong>'+fmtD(tot)+'</strong>.</div>'+
+    '<div class="table-wrap"><table class="log-table"><thead><tr>'+
+      '<th>Interpretation</th><th>Why</th><th class="num">Records</th><th class="num">$ At stake</th>'+
+    '</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+
+      '<td><strong>'+r[0]+'</strong></td>'+
+      '<td style="color:#718096;font-size:11px">'+r[1]+'</td>'+
+      '<td class="num">'+(r[2]==null?'&mdash;':r[2])+'</td>'+
+      '<td class="num">'+(r[3]?'<strong>'+fmtD(r[3])+'</strong>':'&mdash;')+'</td>'+
+    '</tr>').join('')+
+    '</tbody></table></div></div>';
 }
 function rowKey(r){
   return g(r,'Task ID')||[g(r,'EAID'),g(r,'Campaign ID'),g(r,'Date Recommended')].join('|');
@@ -1355,6 +1450,10 @@ function renderKicker(){
     ? (r=>recQ(r)===kickerQuarter||(isUpgraded(r)&&upQ(r)===kickerQuarter))
     : (r=>recYear(r)===YEAR||(isUpgraded(r)&&upYear(r)===YEAR));
   const departedRows = DATA.filter(r=>inPeriod(r)&&!stillHere(r));
+  /* Increases in the period regardless of section, so the interpretations panel can
+     price the records the kicker rules deliberately drop. */
+  const upAny = DATA.filter(r=>g(r,'Date Upgrade Happened')&&stillHere(r)&&
+    (kickerPeriod==='qtd'?upQ(r)===kickerQuarter:upYear(r)===YEAR));
   const periodLbl = kickerPeriod==='qtd' ? (kickerQuarter||'--') : String(YEAR)+' YTD';
 
   const recRows=DATA.filter(recIn);
@@ -1464,6 +1563,7 @@ function renderKicker(){
         '</tr></thead><tbody>'+trows+'</tbody></table></div>'+
       '</div>'+
       integrityPanel(DATA.filter(recInRaw),upRows,list,periodLbl,departedRows)+
+      assumptionsPanel(DATA.filter(recInRaw),upAny,upRows,list,periodLbl)+
     '</div>';
 }
 
@@ -1591,7 +1691,7 @@ function handleFiles(files){
         const sheet=wb.Sheets['Raw Data']||wb.Sheets[wb.SheetNames[0]];
         const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
         const keep=new Set(['Reviewed - No Upgrade Yet','Reviewed - Upgraded 2026','No Longer Counts 2026']);
-        DATA=rows.filter(r=>!r.Section||keep.has(String(r.Section).trim()));
+        DATA=normalizeNames(rows.filter(r=>!r.Section||keep.has(String(r.Section).trim())));
         DATA_SOURCE='local';DATA_TS='Local file: '+f.name;
         renderAll();
       }catch(err){alert('Could not read that file: '+err.message);}
@@ -1612,7 +1712,7 @@ window.addEventListener('resize',()=>{
 
 (function init(){
   if(typeof __EMBEDDED_DATA__!=='undefined'&&Array.isArray(__EMBEDDED_DATA__)&&__EMBEDDED_DATA__.length){
-    DATA=__EMBEDDED_DATA__;DATA_SOURCE='embedded';
+    DATA=normalizeNames(__EMBEDDED_DATA__);DATA_SOURCE='embedded';
   }else{
     DATA=[];DATA_SOURCE='embedded';
   }
